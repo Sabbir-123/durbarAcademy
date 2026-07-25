@@ -1,0 +1,101 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-dark: #07182E;
+    --bg-card: #0D2038;
+    --bg-card-hover: #142C4B;
+    --bg-elevated: #163255;
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --border-gold: rgba(245, 158, 11, 0.25);
+    
+    --accent-gold: #F59E0B;
+    --accent-gold-hover: #D97706;
+    --accent-gold-light: #FACC15;
+    
+    --accent-emerald: #10B981;
+    --accent-emerald-light: #34D399;
+    
+    --accent-crimson: #EF4444;
+    --accent-crimson-light: #F87171;
+    
+    --text-primary: #FFFFFF;
+    --text-secondary: #94A3B8;
+    --text-muted: #64748B;
+  }
+
+  body {
+    background-color: #07182E;
+    color: #FFFFFF;
+    font-family: var(--font-bengali), var(--font-english), sans-serif;
+    overflow-x: hidden;
+    scroll-behavior: smooth;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #07182E;
+}
+::-webkit-scrollbar-thumb {
+  background: #1B355A;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #F59E0B;
+}
+
+/* Animations */
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.02); }
+}
+
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 3s infinite ease-in-out;
+}
+
+.animate-float {
+  animation: float-slow 4s infinite ease-in-out;
+}
+
+/* Custom Utilities */
+.glass-panel {
+  background: rgba(13, 32, 56, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-header {
+  background: rgba(7, 24, 46, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.gold-gradient-text {
+  background: linear-gradient(135deg, #FFF 20%, #FACC15 80%, #F59E0B 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gold-glow {
+  box-shadow: 0 0 25px -5px rgba(245, 158, 11, 0.3);
+}
+
+.emerald-glow {
+  box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.25);
+}
+
+.crimson-glow {
+  box-shadow: 0 0 20px -5px rgba(239, 68, 68, 0.2);
+}
