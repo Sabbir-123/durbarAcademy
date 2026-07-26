@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { GraduationCap, ArrowRight, Menu, X, Sparkles } from "lucide-react";
 import { SITE_CONFIG } from "@/config/siteConfig";
+import ThemeToggler from "./ThemeToggler";
 
 interface NavbarProps {
   onOpenRegisterModal: (courseId?: string) => void;
@@ -69,23 +70,25 @@ export default function Navbar({ onOpenRegisterModal }: NavbarProps) {
 
         {/* Right Side: Warm Golden Yellow CTA */}
         <div className="hidden sm:flex items-center gap-3">
-          <button
-            onClick={() => onOpenRegisterModal()}
+          <ThemeToggler />
+          <Link
+            href="/login"
             className="px-5 py-2.5 text-xs sm:text-sm font-bold text-slate-950 bg-gradient-to-r from-[#F59E0B] via-[#FACC15] to-[#F59E0B] hover:from-[#FACC15] hover:to-[#F59E0B] rounded-xl shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
           >
-            <span>ফ্রি ক্লাসে যোগ দিন</span>
+            <span>লগইন করুন</span>
             <ArrowRight className="w-4 h-4" />
-          </button>
+          </Link>
         </div>
 
         {/* Mobile Menu Toggle Button */}
         <div className="flex items-center gap-2 md:hidden">
-          <button
-            onClick={() => onOpenRegisterModal()}
+          <ThemeToggler />
+          <Link
+            href="/login"
             className="sm:hidden px-3 py-1.5 text-[11px] font-bold text-slate-950 bg-[#F59E0B] rounded-lg"
           >
-            ফ্রি ক্লাস
-          </button>
+            লগইন
+          </Link>
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="p-2 text-slate-700 hover:text-slate-950 rounded-lg hover:bg-slate-100 transition-colors"
@@ -112,16 +115,14 @@ export default function Navbar({ onOpenRegisterModal }: NavbarProps) {
             ))}
           </nav>
           <div className="pt-2">
-            <button
-              onClick={() => {
-                setMobileMenuOpen(false);
-                onOpenRegisterModal();
-              }}
+            <Link
+              href="/login"
+              onClick={() => setMobileMenuOpen(false)}
               className="w-full py-3 text-xs font-extrabold text-slate-950 bg-[#F59E0B] hover:bg-[#FACC15] rounded-xl shadow-md text-center flex items-center justify-center gap-2"
             >
-              <span>ফ্রি ক্লাসে যোগ দিন</span>
+              <span>লগইন করুন</span>
               <ArrowRight className="w-4 h-4" />
-            </button>
+            </Link>
           </div>
         </div>
       )}
