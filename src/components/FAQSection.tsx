@@ -75,8 +75,8 @@ export default function FAQSection() {
             return (
               <div
                 key={faq.id}
-                className={`bg-[#0D2038] border rounded-2xl sm:rounded-3xl overflow-hidden transition-all duration-300 shadow-xl ${
-                  isOpen ? "border-[#F59E0B]/40 bg-[#0E2440]" : "border-white/10 hover:border-white/20"
+                className={`bg-[#0D2038] border rounded-2xl sm:rounded-3xl overflow-hidden transition-all duration-300 shadow-xl faq-card ${
+                  isOpen ? "border-[#F59E0B]/40 bg-[#0E2440] faq-card-open" : "border-white/10 hover:border-white/20"
                 }`}
               >
                 {/* Accessible Button Header */}
@@ -108,7 +108,7 @@ export default function FAQSection() {
                   <div
                     id={`faq-answer-${faq.id}`}
                     role="region"
-                    className="px-6 sm:px-7 pb-6 pt-1 text-sm sm:text-base text-slate-300 leading-relaxed border-t border-white/5 bg-[#091A2E]/80 animate-fade-in"
+                    className="px-6 sm:px-7 pb-6 pt-3 text-sm sm:text-base text-slate-300 leading-relaxed border-t border-white/5 bg-[#091A2E]/80 faq-answer-box animate-fade-in"
                   >
                     {faq.answer}
                   </div>

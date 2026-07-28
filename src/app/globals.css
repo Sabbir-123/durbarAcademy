@@ -113,22 +113,75 @@ html.light body {
   color: #0F172A !important;
 }
 
-html.light section,
+html.light section:not(#hero),
 html.light main,
-html.light .bg-\[\#07182E\],
-html.light .bg-black\/30 {
-  background: radial-gradient(circle at 15% 25%, rgba(139, 92, 246, 0.05) 0%, transparent 50%), 
-              radial-gradient(circle at 85% 75%, rgba(249, 115, 22, 0.05) 0%, transparent 50%), 
-              #FFFFFF !important;
+html.light footer,
+html.light .bg-\[\#07182E\]:not(#hero),
+html.light .bg-\[\#030C18\],
+html.light .bg-\[\#081B33\],
+html.light .bg-\[\#081B33\]\/95,
+html.light .bg-\[\#0B213B\],
+html.light .bg-\[\#0A1D36\],
+html.light .bg-\[\#0E2038\] {
+  background: radial-gradient(circle at 15% 25%, rgba(139, 92, 246, 0.04) 0%, transparent 50%), 
+              radial-gradient(circle at 85% 75%, rgba(249, 115, 22, 0.04) 0%, transparent 50%), 
+              #F8FAFC !important;
 }
 
-/* Glass panel gradients */
+/* Hero section image visibility in Light Mode */
+html.light section#hero,
+html.light .hero-section-container {
+  background: #FFFFFF !important;
+}
+
+html.light .hero-overlay-t {
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.65) 60%, transparent 100%) !important;
+}
+
+html.light .hero-overlay-r {
+  background: linear-gradient(to right, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.7) 50%, transparent 100%) !important;
+}
+
+html.light .hero-overlay-dark {
+  background: rgba(255, 255, 255, 0.15) !important;
+}
+
+html.light footer {
+  border-top-color: rgba(139, 92, 246, 0.15) !important;
+}
+
+/* Durbar Solution container & overlay light mode fixes */
+html.light .durbar-solution-card {
+  background: #F8FAFC !important;
+  border-color: rgba(139, 92, 246, 0.15) !important;
+  box-shadow: 0 20px 40px -15px rgba(139, 92, 246, 0.12) !important;
+}
+
+html.light .durbar-solution-overlay-r {
+  background: linear-gradient(to right, #F8FAFC 0%, rgba(248, 250, 252, 0.9) 50%, transparent 100%) !important;
+}
+
+html.light .durbar-solution-overlay-t {
+  background: linear-gradient(to top, #F8FAFC 0%, rgba(248, 250, 252, 0.9) 60%, transparent 100%) !important;
+}
+
+html.light .durbar-solution-panel {
+  background: #FFFFFF !important;
+  border-color: rgba(139, 92, 246, 0.18) !important;
+  box-shadow: 0 15px 35px -10px rgba(139, 92, 246, 0.1) !important;
+}
+
+/* Glass panel & cards styling */
 html.light .glass-panel,
 html.light .bg-\[\#0D2038\],
 html.light .bg-\[\#0A1A2E\],
 html.light .bg-\[\#0D2038\]\/95,
 html.light .bg-\[\#0D2038\]\/90,
 html.light .bg-\[\#0D2038\]\/80,
+html.light .bg-\[\#122744\],
+html.light .bg-\[\#102744\],
+html.light .bg-\[\#163255\],
+html.light .faq-card,
 html.light aside {
   background: #FFFFFF !important;
   border-color: rgba(139, 92, 246, 0.15) !important;
@@ -136,9 +189,35 @@ html.light aside {
               0 1px 3px rgba(0, 0, 0, 0.01) !important;
 }
 
+html.light .faq-card-open,
+html.light .bg-\[\#0E2440\] {
+  background: #FFFFFF !important;
+  border-color: #8B5CF6 !important;
+  box-shadow: 0 10px 25px -5px rgba(139, 92, 246, 0.12) !important;
+}
+
+html.light .faq-answer-box,
+html.light .bg-\[\#091A2E\]\/80 {
+  background: rgba(139, 92, 246, 0.04) !important;
+  color: #334155 !important;
+  border-top-color: rgba(139, 92, 246, 0.15) !important;
+}
+
+html.light .border-white\/15,
 html.light .border-white\/10,
 html.light .border-white\/5 {
-  border-color: rgba(139, 92, 246, 0.12) !important;
+  border-color: rgba(139, 92, 246, 0.15) !important;
+}
+
+/* Pain points problem & solution cards */
+html.light .bg-\[\#121B2A\]\/90 {
+  background: rgba(239, 68, 68, 0.03) !important;
+  border-color: rgba(239, 68, 68, 0.15) !important;
+}
+
+html.light .bg-gradient-to-br.from-\[\#0E2847\].to-\[\#0A223E\] {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.04) 0%, rgba(16, 185, 129, 0.04) 100%) !important;
+  border-color: rgba(16, 185, 129, 0.2) !important;
 }
 
 /* Invert Text Colors */
@@ -164,19 +243,58 @@ html.light .text-slate-400 {
   color: #64748B !important;
 }
 
-/* ACCENT Remapping: Convert gold colors to purple/orange */
+/* ACCENT Remapping: Convert all yellowish text to purple (#8B5CF6 / #7C3AED) */
+html.light .gold-gradient-text {
+  background: linear-gradient(135deg, #7C3AED 0%, #8B5CF6 60%, #A855F7 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
 html.light .text-\[\#FACC15\],
-html.light .text-\[\#F59E0B\] {
+html.light .text-\[\#F59E0B\],
+html.light .text-\[\#D97706\],
+html.light .text-\[\#EAB308\],
+html.light .text-amber-300,
+html.light .text-amber-400,
+html.light .text-amber-500,
+html.light .text-yellow-300,
+html.light .text-yellow-400,
+html.light .text-yellow-500 {
+  color: #8B5CF6 !important;
+  -webkit-text-fill-color: #8B5CF6 !important;
+}
+
+html.light svg.text-\[\#F59E0B\],
+html.light svg.text-\[\#FACC15\],
+html.light svg.text-amber-400 {
   color: #8B5CF6 !important;
 }
 
-html.light .text-\[\#F59E0B\]\.font-semibold,
-html.light .text-\[\#FACC15\]\.font-semibold {
-  color: #F97316 !important;
+html.light svg.fill-amber-400,
+html.light svg.fill-\[\#F59E0B\],
+html.light svg.fill-\[\#FACC15\] {
+  fill: #8B5CF6 !important;
 }
 
-html.light .border-\[\#F59E0B\]\/30 {
+html.light .border-\[\#F59E0B\]\/30,
+html.light .border-\[\#FACC15\]\/30 {
   border-color: rgba(139, 92, 246, 0.25) !important;
+}
+
+/* Selected Active Step Card */
+html.light .active-step-card {
+  background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%) !important;
+  border-color: #8B5CF6 !important;
+  box-shadow: 0 12px 30px -5px rgba(139, 92, 246, 0.4) !important;
+}
+
+html.light .active-step-card h3,
+html.light .active-step-card p,
+html.light .active-step-card span,
+html.light .active-step-card div,
+html.light .active-step-text-white {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
 }
 
 html.light .bg-gradient-to-r.from-\[\#F59E0B\],
@@ -188,8 +306,10 @@ html.light .bg-gradient-to-r.from-emerald-400.to-emerald-500 {
 }
 
 html.light button[type="submit"] span,
-html.light .bg-gradient-to-r.from-\[\#F59E0B\] span {
+html.light .bg-gradient-to-r.from-\[\#F59E0B\] span,
+html.light .active-step-card span {
   color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
 }
 
 html.light .gold-glow {

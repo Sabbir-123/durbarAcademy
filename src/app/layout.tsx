@@ -47,6 +47,7 @@ export default function RootLayout({
   return (
     <html
       lang="bn"
+      suppressHydrationWarning
       className={`${hindSiliguri.variable} ${plusJakartaSans.variable} h-full antialiased`}
     >
       <head>
@@ -67,7 +68,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-full bg-[#07182E] text-white selection:bg-[#F59E0B] selection:text-black flex flex-col font-sans">
+      <body suppressHydrationWarning className="min-h-full bg-[#07182E] text-white selection:bg-[#F59E0B] selection:text-black flex flex-col font-sans">
         {children}
       </body>
     </html>

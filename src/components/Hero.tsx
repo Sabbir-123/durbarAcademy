@@ -11,7 +11,7 @@ export default function Hero({ onOpenRegisterModal }: HeroProps) {
   return (
     <section
       id="hero"
-      className="relative min-h-[85vh] lg:min-h-[92vh] flex items-end pb-16 lg:pb-24 -mt-[76px] sm:-mt-[96px] pt-[92px] sm:pt-[112px] lg:pt-[125px] overflow-hidden bg-[#07182E]"
+      className="relative min-h-[85vh] lg:min-h-[92vh] flex items-end pb-16 lg:pb-24 -mt-[76px] sm:-mt-[96px] pt-[92px] sm:pt-[112px] lg:pt-[125px] overflow-hidden bg-[#07182E] hero-section-container"
     >
       {/* Background Image Container */}
       <div className="absolute inset-0 z-0">
@@ -23,10 +23,10 @@ export default function Hero({ onOpenRegisterModal }: HeroProps) {
           className="object-cover object-center scale-105 animate-pulse-subtle"
         />
 
-        {/* Strong Dark Gradient Overlays for High Legibility */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#07182E] via-[#07182E]/80 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#07182E] via-[#07182E]/85 to-transparent" />
-        <div className="absolute inset-0 bg-black/30" />
+        {/* Strong Dark / Light Gradient Overlays for High Legibility */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#07182E] via-[#07182E]/80 to-transparent hero-overlay-t" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#07182E] via-[#07182E]/85 to-transparent hero-overlay-r" />
+        <div className="absolute inset-0 bg-black/30 hero-overlay-dark" />
       </div>
 
       {/* Hero Content - Positioned Bottom Left on Desktop */}

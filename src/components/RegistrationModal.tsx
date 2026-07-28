@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { COURSES } from "@/data/courses";
 import { X, CheckCircle2, ShieldCheck, CreditCard, Sparkles, PhoneCall } from "lucide-react";
+import { createClient } from "@/utils/supabase/client";
 
 interface RegistrationModalProps {
   initialCourseId?: string;
@@ -10,17 +11,114 @@ interface RegistrationModalProps {
 }
 
 export default function RegistrationModal({ initialCourseId, onClose }: RegistrationModalProps) {
-  const [selectedCourseId, setSelectedCourseId] = useState<string>(
-    initialCourseId || COURSES[0].id
-  );
+  const [courses, setCourses] = useState<any[]>(COURSES);
+  const [branches, setBranches] = useState<any[]>([
+    { id: "online", label: "অনলাইন" },
+    { id: "dhaka", label: "ঢাকা শাখা" },
+    { id: "chattogram", label: "চট্টগ্রাম শাখা" },
+    { id: "rajshahi", label: "রাজশাহী শাখা" },
+  ]);
+  const [paymentMethods, setPaymentMethods] = useState<any[]>([
+    { id: "bkash", label: "bKash (বিকাশ)" },
+    { id: "nagad", label: "Nagad (নগদ)" },
+    { id: "card", label: "কার্ড / ব্যাংক" },
+  ]);
+
+  const [selectedCourseId, setSelectedCourseId] = useState<string>("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [college, setCollege] = useState("");
   const [branch, setBranch] = useState("online");
   const [paymentMethod, setPaymentMethod] = useState("bkash");
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const selectedCourse = COURSES.find((c) => c.id === selectedCourseId) || COURSES[0];
+  const supabase = createClient();
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        // Fetch courses
+        const { data: dbCourses } = await supabase
+          .from("courses")
+          .select("*")
+          .order("title");
+
+        if (dbCourses && dbCourses.length > 0) {
+          setCourses(
+            dbCourses.map((c) => ({
+              id: c.id,
+              title: c.title,
+              price: Number(c.price),
+              slug: c.slug,
+            }))
+          );
+        }
+
+        // Fetch branches
+        const { data: dbBranches } = await supabase
+          .from("admission_branches")
+          .select("*")
+          .order("created_at");
+
+        if (dbBranches && dbBranches.length > 0) {
+          setBranches(
+            dbBranches.map((b) => ({
+              id: b.name,
+              label: b.label,
+            }))
+          );
+        }
+
+        // Fetch payment methods
+        const { data: dbPayments } = await supabase
+          .from("admission_payment_methods")
+          .select("*")
+          .order("created_at");
+
+        if (dbPayments && dbPayments.length > 0) {
+          setPaymentMethods(
+            dbPayments.map((p) => ({
+              id: p.name,
+              label: p.label,
+            }))
+          );
+        }
+      } catch (err) {
+        console.error("Error loading dynamic admission settings, using static fallbacks:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
+  // Update selectedCourseId once courses are loaded or if initialCourseId changes
+  useEffect(() => {
+    if (courses.length > 0) {
+      const match = courses.find((c) => c.id === initialCourseId || c.slug === initialCourseId);
+      if (match) {
+        setSelectedCourseId(match.id);
+      } else if (!selectedCourseId) {
+        setSelectedCourseId(courses[0].id);
+      }
+    }
+  }, [courses, initialCourseId]);
+
+  // Set default branch and payment method once loaded
+  useEffect(() => {
+    if (branches.length > 0 && !branches.some((b) => b.id === branch)) {
+      setBranch(branches[0].id);
+    }
+  }, [branches]);
+
+  useEffect(() => {
+    if (paymentMethods.length > 0 && !paymentMethods.some((p) => p.id === paymentMethod)) {
+      setPaymentMethod(paymentMethods[0].id);
+    }
+  }, [paymentMethods]);
+
+  const selectedCourse = courses.find((c) => c.id === selectedCourseId) || courses[0] || COURSES[0];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,7 +163,7 @@ export default function RegistrationModal({ initialCourseId, onClose }: Registra
                 onChange={(e) => setSelectedCourseId(e.target.value)}
                 className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-xs text-white focus:border-[#F59E0B] outline-none"
               >
-                {COURSES.map((c) => (
+                {courses.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.title} — (৳{c.price.toLocaleString("bn-BD")})
                   </option>
@@ -116,12 +214,7 @@ export default function RegistrationModal({ initialCourseId, onClose }: Registra
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-300">পছন্দের শাখা / প্ল্যাটফর্ম:</label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {[
-                  { id: "online", label: "অনলাইন" },
-                  { id: "dhaka", label: "ঢাকা শাখা" },
-                  { id: "chattogram", label: "চট্টগ্রাম শাখা" },
-                  { id: "rajshahi", label: "রাজশাহী শাখা" },
-                ].map((b) => (
+                {branches.map((b) => (
                   <button
                     type="button"
                     key={b.id}
@@ -142,11 +235,7 @@ export default function RegistrationModal({ initialCourseId, onClose }: Registra
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-300">পেমেন্ট মেথড:</label>
               <div className="grid grid-cols-3 gap-2">
-                {[
-                  { id: "bkash", label: "bKash (বিকাশ)" },
-                  { id: "nagad", label: "Nagad (নগদ)" },
-                  { id: "card", label: "কার্ড / ব্যাংক" },
-                ].map((pm) => (
+                {paymentMethods.map((pm) => (
                   <button
                     type="button"
                     key={pm.id}

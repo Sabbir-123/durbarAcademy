@@ -82,12 +82,12 @@ export default function EcosystemMethodology() {
                 onClick={() => setActiveStep(step.id)}
                 className={`p-6 rounded-3xl text-left transition-all duration-300 relative border overflow-hidden ${
                   isActive
-                    ? "bg-[#142C4B] border-[#F59E0B] shadow-2xl gold-glow"
+                    ? "bg-[#142C4B] border-[#F59E0B] shadow-2xl gold-glow active-step-card"
                     : "bg-[#0D2038] border-white/10 hover:border-white/20 hover:bg-[#102744]"
                 }`}
               >
                 <div className="flex items-center justify-between mb-4">
-                  <span className={`text-2xl font-extrabold ${isActive ? "text-[#F59E0B]" : "text-slate-500"}`}>
+                  <span className={`text-2xl font-extrabold ${isActive ? "text-[#F59E0B] active-step-text-white" : "text-slate-500"}`}>
                     {step.number}
                   </span>
                   <div className={`p-3 rounded-2xl ${isActive ? "bg-[#F59E0B] text-black" : "bg-white/5 text-slate-300"}`}>
@@ -95,8 +95,8 @@ export default function EcosystemMethodology() {
                   </div>
                 </div>
 
-                <h3 className="text-lg font-bold text-white mb-1">{step.title}</h3>
-                <p className="text-xs text-slate-400">{step.subtitle}</p>
+                <h3 className={`text-lg font-bold mb-1 ${isActive ? "text-white active-step-text-white" : "text-white"}`}>{step.title}</h3>
+                <p className={`text-xs ${isActive ? "text-slate-200 active-step-text-white" : "text-slate-400"}`}>{step.subtitle}</p>
 
                 {isActive && (
                   <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-[#F59E0B] to-emerald-400" />

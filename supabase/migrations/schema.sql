@@ -395,6 +395,9 @@ CREATE POLICY "Profiles are viewable by everyone" ON public.profiles FOR SELECT 
 DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
 CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
+CREATE POLICY "Users can insert their own profile" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
+
 -- User Roles Policies
 DROP POLICY IF EXISTS "Roles are viewable by authenticated users" ON public.user_roles;
 CREATE POLICY "Roles are viewable by authenticated users" ON public.user_roles FOR SELECT USING (auth.role() = 'authenticated');
@@ -405,7 +408,25 @@ CREATE POLICY "Users can insert their own default student role" ON public.user_r
 );
 
 DROP POLICY IF EXISTS "Only admins can change roles" ON public.user_roles;
-CREATE POLICY "Only admins can change roles" ON public.user_roles FOR ALL USING (
+
+DROP POLICY IF EXISTS "Only admins can update roles" ON public.user_roles;
+CREATE POLICY "Only admins can update roles" ON public.user_roles FOR UPDATE USING (
+    EXISTS (
+        SELECT 1 FROM public.user_roles ur 
+        WHERE ur.user_id = auth.uid() AND ur.role = 'admin'
+    )
+);
+
+DROP POLICY IF EXISTS "Only admins can delete roles" ON public.user_roles;
+CREATE POLICY "Only admins can delete roles" ON public.user_roles FOR DELETE USING (
+    EXISTS (
+        SELECT 1 FROM public.user_roles ur 
+        WHERE ur.user_id = auth.uid() AND ur.role = 'admin'
+    )
+);
+
+DROP POLICY IF EXISTS "Only admins can insert roles" ON public.user_roles;
+CREATE POLICY "Only admins can insert roles" ON public.user_roles FOR INSERT WITH CHECK (
     EXISTS (
         SELECT 1 FROM public.user_roles ur 
         WHERE ur.user_id = auth.uid() AND ur.role = 'admin'
@@ -476,3 +497,91 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- -----------------------------------------------------
+-- 10. ADMISSION FORM CUSTOMIZATION TABLES & POLICIES
+-- -----------------------------------------------------
+
+-- Create Branches Table
+CREATE TABLE IF NOT EXISTS public.admission_branches (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT UNIQUE NOT NULL,
+    label TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT now()
+);
+
+-- Seed Default Branches
+INSERT INTO public.admission_branches (name, label) VALUES
+    ('online', 'অনলাইন'),
+    ('dhaka', 'ঢাকা শাখা'),
+    ('chattogram', 'চট্টগ্রাম শাখা'),
+    ('rajshahi', 'রাজশাহী শাখা')
+ON CONFLICT (name) DO NOTHING;
+
+-- Create Payment Methods Table
+CREATE TABLE IF NOT EXISTS public.admission_payment_methods (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT UNIQUE NOT NULL,
+    label TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT now()
+);
+
+-- Seed Default Payment Methods
+INSERT INTO public.admission_payment_methods (name, label) VALUES
+    ('bkash', 'bKash (বিকাশ)'),
+    ('nagad', 'Nagad (নগদ)'),
+    ('card', 'কার্ড / ব্যাংক')
+ON CONFLICT (name) DO NOTHING;
+
+-- Enable RLS
+ALTER TABLE public.admission_branches ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.admission_payment_methods ENABLE ROW LEVEL SECURITY;
+
+-- Branches Policies
+DROP POLICY IF EXISTS "Branches are viewable by everyone" ON public.admission_branches;
+CREATE POLICY "Branches are viewable by everyone" ON public.admission_branches FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Only admins can modify branches" ON public.admission_branches;
+CREATE POLICY "Only admins can modify branches" ON public.admission_branches FOR ALL USING (
+    EXISTS (
+        SELECT 1 FROM public.user_roles ur 
+        WHERE ur.user_id = auth.uid() AND ur.role = 'admin'
+    )
+);
+
+-- Payment Methods Policies
+DROP POLICY IF EXISTS "Payment methods are viewable by everyone" ON public.admission_payment_methods;
+CREATE POLICY "Payment methods are viewable by everyone" ON public.admission_payment_methods FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Only admins can modify payment methods" ON public.admission_payment_methods;
+CREATE POLICY "Only admins can modify payment methods" ON public.admission_payment_methods FOR ALL USING (
+    EXISTS (
+        SELECT 1 FROM public.user_roles ur 
+        WHERE ur.user_id = auth.uid() AND ur.role = 'admin'
+    )
+);
+
+-- Courses Policies
+DROP POLICY IF EXISTS "Courses are viewable by everyone" ON public.courses;
+CREATE POLICY "Courses are viewable by everyone" ON public.courses FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Only admins can modify courses" ON public.courses;
+CREATE POLICY "Only admins can modify courses" ON public.courses FOR ALL USING (
+    EXISTS (
+        SELECT 1 FROM public.user_roles ur 
+        WHERE ur.user_id = auth.uid() AND ur.role = 'admin'
+    )
+);
+
+-- Promote ahmedsabbir2013@gmail.com to admin if user exists
+DO $$
+DECLARE
+    target_id UUID;
+BEGIN
+    SELECT id INTO target_id FROM public.profiles WHERE email = 'ahmedsabbir2013@gmail.com';
+    IF target_id IS NOT NULL THEN
+        INSERT INTO public.user_roles (user_id, role)
+        VALUES (target_id, 'admin')
+        ON CONFLICT (user_id) DO UPDATE SET role = 'admin';
+    END IF;
+END $$;

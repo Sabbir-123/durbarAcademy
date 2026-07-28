@@ -39,7 +39,7 @@ export default function DurbarSolution() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         
         {/* Large Rounded Rectangular Visual Container */}
-        <div className="relative rounded-3xl lg:rounded-[36px] overflow-hidden border border-white/15 bg-[#0D2038] shadow-2xl">
+        <div className="relative rounded-3xl lg:rounded-[36px] overflow-hidden border border-white/15 bg-[#0D2038] shadow-2xl durbar-solution-card">
           
           {/* Background Cinematic Image - Fills the large container */}
           <div className="absolute inset-0 z-0">
@@ -50,15 +50,15 @@ export default function DurbarSolution() {
               className="object-cover object-right lg:object-center opacity-85"
             />
             {/* Subtle Gradient Overlays for High Legibility */}
-            <div className="absolute inset-0 bg-gradient-to-r from-[#07182E] via-[#07182E]/90 to-transparent hidden lg:block" />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#07182E] via-[#07182E]/80 to-transparent lg:hidden" />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#07182E] via-[#07182E]/90 to-transparent hidden lg:block durbar-solution-overlay-r" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#07182E] via-[#07182E]/80 to-transparent lg:hidden durbar-solution-overlay-t" />
           </div>
 
           {/* Content Wrapper */}
           <div className="relative z-10 p-6 sm:p-10 lg:p-14">
             
             {/* Dark Navy Content Panel Over LEFT Side on Desktop */}
-            <div className="w-full lg:max-w-2xl bg-[#081B33]/95 backdrop-blur-md rounded-2xl lg:rounded-3xl p-6 sm:p-10 border border-white/10 shadow-2xl space-y-8">
+            <div className="w-full lg:max-w-2xl bg-[#081B33]/95 backdrop-blur-md rounded-2xl lg:rounded-3xl p-6 sm:p-10 border border-white/10 shadow-2xl space-y-8 durbar-solution-panel">
               
               {/* Top Eyebrow */}
               <div className="space-y-3">
