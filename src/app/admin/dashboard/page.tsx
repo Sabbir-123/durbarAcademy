@@ -445,6 +445,11 @@ export default function AdminDashboard() {
     if (!confirm(`আপনি কি নিশ্চিতভাবে ইউজার "${userName}" সিস্টেম থেকে সম্পূর্ণ ডিলিট করতে চান?`)) return;
 
     try {
+      // 1. Delete from Supabase permanently (so reload does not bring them back)
+      await supabase.from("user_roles").delete().eq("user_id", userId);
+      await supabase.from("profiles").delete().eq("id", userId);
+
+      // 2. Delete from local store
       deleteUserStore(userId);
       await logAuditAction(
         "ইউজার ডিলিট করা (Delete)",
