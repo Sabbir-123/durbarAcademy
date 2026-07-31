@@ -182,7 +182,7 @@ export default function TeacherDashboard() {
         </div>
 
         {/* Class & Test Content Manager Shortcut */}
-        <div className="bg-gradient-to-r from-[#0D2038] via-[#07182E] to-[#0D2038] border border-sky-500/30 rounded-3xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="bg-[#0D2038] border border-sky-500/30 rounded-3xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-md">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-2xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 shrink-0">
               <Video className="w-6 h-6" />
@@ -197,7 +197,7 @@ export default function TeacherDashboard() {
 
           <Link
             href="/teacher/classes"
-            className="px-5 py-3 bg-sky-500 text-slate-950 font-extrabold text-xs rounded-xl hover:brightness-110 shadow-lg transition-all shrink-0 flex items-center gap-2"
+            className="px-5 py-3 bg-sky-500 text-white font-extrabold text-xs rounded-xl hover:brightness-110 shadow-lg transition-all shrink-0 flex items-center gap-2"
           >
             <span>ক্লাস কন্টেন্ট পরিচালনা</span>
             <ChevronRight className="w-4 h-4" />
