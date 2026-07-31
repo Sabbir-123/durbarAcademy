@@ -9,6 +9,7 @@ export interface AppUser {
 }
 
 const STORAGE_KEY = "durbar_academy_users_v1";
+const DELETED_KEY = "durbar_academy_deleted_ids_v1";
 
 export const SUPER_ADMIN_EMAIL = "ahmedsabbir2013@gmail.com";
 
@@ -20,57 +21,39 @@ const DEFAULT_USERS: AppUser[] = [
     role: "Super Admin",
     password: "password123",
   },
-  {
-    id: "u1",
-    full_name: "সাকিব আহমেদ",
-    email: "sakib@durbar.com",
-    role: "student",
-    password: "password123",
-  },
-  {
-    id: "u2",
-    full_name: "তামান্না খাতুন",
-    email: "sabbir.exprovia@gmail.com",
-    role: "student",
-    password: "password123",
-  },
-  {
-    id: "u3",
-    full_name: "ড. সাজ্জাদ হোসেন",
-    email: "sajjad@durbar.com",
-    role: "teacher",
-    password: "password123",
-  },
-  {
-    id: "u4",
-    full_name: "ফারহান আহমেদ",
-    email: "farhan@durbar.com",
-    role: "teacher",
-    password: "password123",
-  },
-  {
-    id: "u5",
-    full_name: "রকিবুল ইসলাম",
-    email: "rokibul@durbar.com",
-    role: "accountant",
-    password: "password123",
-  },
-  {
-    id: "u6",
-    full_name: "তানজিলুর রহমান",
-    email: "tanjil@durbar.com",
-    role: "Admin 2",
-    password: "password123",
-  },
 ];
 
 export function isSuperAdminEmail(email: string): boolean {
   return email.trim().toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
 }
 
+// ── Deleted-user blocklist helpers ──────────────────────────────────────────
+function getDeletedIds(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = localStorage.getItem(DELETED_KEY);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function addDeletedId(userId: string): void {
+  if (typeof window === "undefined") return;
+  const ids = getDeletedIds();
+  ids.add(userId);
+  localStorage.setItem(DELETED_KEY, JSON.stringify([...ids]));
+}
+
+export function isUserDeleted(userId: string): boolean {
+  return getDeletedIds().has(userId);
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 export function getStoredUsers(): AppUser[] {
   if (typeof window === "undefined") return DEFAULT_USERS;
   try {
+    const deletedIds = getDeletedIds();
     const raw = localStorage.getItem(STORAGE_KEY);
     let list: AppUser[] = DEFAULT_USERS;
     if (raw) {
@@ -79,6 +62,9 @@ export function getStoredUsers(): AppUser[] {
         list = parsed;
       }
     }
+
+    // Filter out any users that were permanently deleted
+    list = list.filter((u) => !deletedIds.has(u.id));
 
     // Ensure ahmedsabbir2013@gmail.com is ALWAYS present and designated as Super Admin
     const sabbirIdx = list.findIndex((u) => isSuperAdminEmail(u.email));
@@ -102,6 +88,17 @@ export function getStoredUsers(): AppUser[] {
 }
 
 export function saveUserStore(user: AppUser): AppUser[] {
+  // ── BLOCKLIST CHECK: never re-add a deleted user ─────────────────
+  if (isUserDeleted(user.id)) return getStoredUsers();
+  // Also block by email in case id differs
+  const deletedIds = getDeletedIds();
+  const existing = getStoredUsers();
+  const byEmail = existing.find(
+    (u) => u.email.toLowerCase() === user.email.toLowerCase()
+  );
+  if (byEmail && deletedIds.has(byEmail.id)) return existing;
+  // ─────────────────────────────────────────────────────────────────
+
   const current = getStoredUsers();
 
   // Prevent changing Super Admin role or email
@@ -179,6 +176,9 @@ export function deleteUserStore(userId: string): AppUser[] {
     console.warn("Super Admin account cannot be deleted.");
     return current;
   }
+
+  // Persist to blocklist so Supabase re-sync can't bring this user back
+  addDeletedId(userId);
 
   const updated = current.filter((u) => u.id !== userId);
   if (typeof window !== "undefined") {

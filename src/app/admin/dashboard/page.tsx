@@ -31,6 +31,7 @@ import {
   deleteUserStore,
   subscribeUserStore,
   isSuperAdminEmail,
+  isUserDeleted,
 } from "@/utils/userStore";
 import {
   Users,
@@ -251,7 +252,7 @@ export default function AdminDashboard() {
         .single();
       setProfile(prof);
 
-      // Fetch users
+      // Fetch users — skip any that were permanently deleted by admin
       const { data: dbUsers } = await supabase.from("profiles").select(`
           id,
           full_name,
@@ -260,6 +261,8 @@ export default function AdminDashboard() {
         `);
       if (dbUsers && dbUsers.length > 0) {
         dbUsers.forEach((u) => {
+          // Skip if this user's id OR email is in the deleted blocklist
+          if (isUserDeleted(u.id)) return;
           saveUserStore({
             id: u.id,
             full_name: u.full_name || u.email,
