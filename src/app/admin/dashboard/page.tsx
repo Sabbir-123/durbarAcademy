@@ -772,22 +772,7 @@ export default function AdminDashboard() {
       />
 
       <main className="flex-1 overflow-y-auto p-6 sm:p-8 lg:p-10 space-y-8">
-        {/* Top Welcomer */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
-          <div className="space-y-1">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
-              সুপার অ্যাডমিন কন্ট্রোল সেন্টার
-            </h1>
-            <p className="text-xs text-slate-300">
-              ইউজার রোল প্রমোশন, ফাইনান্সিয়াল হিসাব, ডিফেন্স কোর্সসমূহ এবং সাকসেস স্টোরি সামগ্রিক সমাহার।
-            </p>
-          </div>
 
-          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#0D2038] border border-white/10 text-xs font-bold text-[#F59E0B] shadow-inner">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>সিস্টেম লাইভ ড্যাশবোর্ড</span>
-          </div>
-        </div>
 
         {/* TAB: OVERVIEW DASHBOARD (SUMMARY OF EVERYTHING) */}
         {activeTab === "dashboard" && (
