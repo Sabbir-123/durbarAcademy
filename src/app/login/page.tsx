@@ -229,7 +229,7 @@ export default function LoginPage() {
           </div>
 
           {/* Dynamic Descriptive Error Alerts */}
-          {error && errorType !== "email_not_confirmed" && (
+          {error && (errorType as string) !== "email_not_confirmed" && (
             <div
               className={`p-4 rounded-xl flex items-start gap-3 text-xs leading-relaxed border ${
                 errorType === "not_found"
