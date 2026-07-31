@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import ThemeToggler from "./ThemeToggler";
 import {
-  GraduationCap,
   LayoutDashboard,
   BookOpen,
   LogOut,
@@ -16,7 +15,6 @@ import {
   Coins,
   Trophy,
 } from "lucide-react";
-import { SITE_CONFIG } from "@/config/siteConfig";
 
 interface SidebarProps {
   role: "student" | "teacher" | "accountant" | "admin";
@@ -64,23 +62,9 @@ export default function DashboardSidebar({ role, activeTab, onTabChange, userNam
 
   return (
     <aside className="w-64 bg-[#0D2038] border-r border-white/10 flex flex-col justify-between shrink-0 h-screen sticky top-0">
-      {/* Brand & Profile Header */}
-      <div className="p-6 border-b border-white/5 space-y-5">
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="w-9 h-9 rounded-xl bg-[#07182E] border border-[#F59E0B]/30 flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform">
-            <GraduationCap className="w-5 h-5 text-[#F59E0B]" />
-          </div>
-          <div>
-            <span className="text-sm font-black text-white block">
-              {SITE_CONFIG.name}
-            </span>
-            <span className="text-[9px] font-extrabold text-[#FACC15] uppercase tracking-widest block">
-              {role === "admin" ? "super admin" : role} portal
-            </span>
-          </div>
-        </Link>
-
-        {userName && (
+      {/* Profile Header */}
+      {userName ? (
+        <div className="p-6 border-b border-white/5">
           <div className="p-3 bg-[#07182E] border border-white/5 rounded-2xl space-y-1 shadow-inner">
             <span className="text-[9px] font-bold text-[#FACC15] uppercase tracking-wider block">
               {role === "admin" ? "super admin center" : "user profile"}
@@ -89,8 +73,10 @@ export default function DashboardSidebar({ role, activeTab, onTabChange, userNam
               স্বাগতম, {userName}!
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="pt-6" />
+      )}
 
       {/* Nav Links */}
       <nav className="flex-1 p-4 space-y-1.5">

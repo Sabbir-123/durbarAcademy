@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import DashboardSidebar from "@/components/DashboardSidebar";
+import DashboardHeader from "@/components/DashboardHeader";
 import { createClient } from "@/utils/supabase/client";
 import { StudentSuccess } from "@/data/testimonials";
 import {
@@ -153,6 +154,7 @@ export default function TeacherDashboard() {
               শিক্ষার্থীদের কোর্স কারিকুলাম ও কৃতি শিক্ষার্থীদের সাফল্য স্টোরি (CRUD) পরিচালনা প্যানেল।
             </p>
           </div>
+          <DashboardHeader role="teacher" />
         </div>
 
         {/* Overview Stats Summary */}

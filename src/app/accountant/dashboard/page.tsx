@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import DashboardSidebar from "@/components/DashboardSidebar";
+import DashboardHeader from "@/components/DashboardHeader";
 import { createClient } from "@/utils/supabase/client";
 import { Coins, TrendingUp, CreditCard, CheckCircle, XCircle, ArrowUpRight, BarChart2 } from "lucide-react";
 
@@ -61,7 +62,6 @@ export default function AccountantDashboard() {
 
       {/* Main Content Area */}
       <main className="flex-1 overflow-y-auto p-6 sm:p-8 lg:p-10 space-y-8">
-        
         {/* Top Welcomer */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
           <div className="space-y-1">
@@ -75,6 +75,7 @@ export default function AccountantDashboard() {
               দুর্বার একাডেমির আয়-ব্যয় বিবরণী, বেতন এবং বাজেট বরাদ্দকরণ প্যানেল।
             </p>
           </div>
+          <DashboardHeader role="accountant" />
         </div>
 
         {/* Overview Stats Summary */}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import DashboardSidebar from "@/components/DashboardSidebar";
+import DashboardHeader from "@/components/DashboardHeader";
 import { createClient } from "@/utils/supabase/client";
 import { BookOpen, Calendar, HelpCircle, CheckCircle2, User, Trophy, CreditCard } from "lucide-react";
 import Link from "next/link";
@@ -105,7 +106,6 @@ export default function StudentDashboard() {
 
       {/* Main Content Area */}
       <main className="flex-1 overflow-y-auto p-6 sm:p-8 lg:p-10 space-y-8">
-        
         {/* Top Profile Welcomer */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
           <div className="space-y-1">
@@ -119,6 +119,7 @@ export default function StudentDashboard() {
               শিক্ষা, শৃঙ্খলা ও মেন্টরশিপের মাধ্যমে আপনার ভর্তি প্রিপারেশন বেগবান করুন।
             </p>
           </div>
+          <DashboardHeader role="student" />
           <div className="flex items-center gap-3 bg-[#0D2038] px-4 py-2.5 rounded-xl border border-white/10">
             <div className="w-8 h-8 rounded-full bg-[#163255] flex items-center justify-center font-bold text-emerald-400">
               {profile?.full_name?.charAt(0) || "S"}

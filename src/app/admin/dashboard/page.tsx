@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import DashboardSidebar from "@/components/DashboardSidebar";
+import DashboardHeader from "@/components/DashboardHeader";
 import { createClient } from "@/utils/supabase/client";
 import { Course } from "@/data/courses";
 import {
@@ -777,7 +778,7 @@ export default function AdminDashboard() {
         {/* TAB: OVERVIEW DASHBOARD (SUMMARY OF EVERYTHING) */}
         {activeTab === "dashboard" && (
           <div className="space-y-8">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4 gap-4">
               <div>
                 <h2 className="text-xl font-black text-white flex items-center gap-2">
                   <LayoutDashboard className="w-6 h-6 text-[#F59E0B]" />
@@ -787,6 +788,7 @@ export default function AdminDashboard() {
                   সিস্টেমের সকল ইউজার, ডিফেন্স কোর্স, কৃতি শিক্ষার্থী ও আর্থিক হিসাবের রিয়েল-টাইম সারসংক্ষেপ।
                 </p>
               </div>
+              <DashboardHeader role="admin" />
             </div>
 
             {/* 5 EXECUTIVE SUMMARY STAT CARDS */}
