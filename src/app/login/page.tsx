@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
-import { GraduationCap, Lock, Mail, AlertCircle, ArrowRight, UserX, KeyRound } from "lucide-react";
+import { GraduationCap, Lock, Mail, AlertCircle, ArrowRight, UserX, KeyRound, Eye, EyeOff } from "lucide-react";
 import { SITE_CONFIG } from "@/config/siteConfig";
 import { getStoredUsers } from "@/utils/userStore";
 
@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errorType, setErrorType] = useState<"not_found" | "invalid_password" | "general">("general");
+  const [showPassword, setShowPassword] = useState(false);
 
   const router = useRouter();
   const supabase = createClient();
@@ -178,13 +179,21 @@ export default function LoginPage() {
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-500 absolute left-4 top-1/2 -translate-y-1/2" />
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full bg-[#07182E] border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-xs text-white focus:border-[#F59E0B] outline-none transition-colors"
+                className="w-full bg-[#07182E] border border-white/10 rounded-xl py-3.5 pl-11 pr-11 text-xs text-white focus:border-[#F59E0B] outline-none transition-colors"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#FACC15] transition-colors"
+                aria-label={showPassword ? "পাসওয়ার্ড লুকান" : "পাসওয়ার্ড দেখুন"}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
           </div>
 
