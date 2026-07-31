@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="bn" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ইমেল নিশ্চিত করুন — দুর্বার একাডেমি</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', Arial, sans-serif;
+      background-color: #07182E;
+      color: #ffffff;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .wrapper {
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: #07182E;
+      padding: 40px 20px;
+    }
+
+    /* ── Header ─────────────────────────────── */
+    .header {
+      text-align: center;
+      padding-bottom: 32px;
+    }
+
+    .logo-circle {
+      width: 64px;
+      height: 64px;
+      background: linear-gradient(135deg, #0D2038, #163255);
+      border: 2px solid rgba(245,158,11,0.4);
+      border-radius: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+
+    .logo-circle img {
+      width: 36px;
+      height: 36px;
+    }
+
+    .brand-name {
+      font-size: 24px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-tagline {
+      font-size: 11px;
+      font-weight: 700;
+      color: #FACC15;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    /* ── Card ───────────────────────────────── */
+    .card {
+      background: linear-gradient(145deg, #0D2038, #0a1a2e);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 24px;
+      padding: 40px 36px;
+      margin-bottom: 24px;
+    }
+
+    .icon-row {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .icon-badge {
+      width: 72px;
+      height: 72px;
+      background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(250,204,21,0.1));
+      border: 2px solid rgba(245,158,11,0.3);
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+    }
+
+    .greeting {
+      font-size: 22px;
+      font-weight: 800;
+      color: #ffffff;
+      text-align: center;
+      margin-bottom: 8px;
+      line-height: 1.3;
+    }
+
+    .sub-greeting {
+      font-size: 14px;
+      color: #94a3b8;
+      text-align: center;
+      line-height: 1.6;
+      margin-bottom: 32px;
+    }
+
+    /* ── Divider ─────────────────────────────── */
+    .divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+      margin: 28px 0;
+    }
+
+    /* ── Info Box ────────────────────────────── */
+    .info-box {
+      background: rgba(245,158,11,0.06);
+      border: 1px solid rgba(245,158,11,0.2);
+      border-radius: 14px;
+      padding: 18px 20px;
+      margin-bottom: 28px;
+      font-size: 13px;
+      color: #cbd5e1;
+      line-height: 1.7;
+    }
+
+    .info-box strong {
+      color: #FACC15;
+      display: block;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+
+    /* ── CTA Button ──────────────────────────── */
+    .cta-wrapper {
+      text-align: center;
+      margin: 28px 0;
+    }
+
+    .cta-button {
+      display: inline-block;
+      background: linear-gradient(135deg, #F59E0B, #FACC15);
+      color: #0a1424;
+      font-size: 15px;
+      font-weight: 800;
+      text-decoration: none;
+      padding: 16px 40px;
+      border-radius: 14px;
+      letter-spacing: 0.3px;
+      box-shadow: 0 8px 32px rgba(245,158,11,0.35);
+    }
+
+    .cta-note {
+      font-size: 12px;
+      color: #64748b;
+      text-align: center;
+      margin-top: 14px;
+      line-height: 1.6;
+    }
+
+    .cta-note a {
+      color: #F59E0B;
+      word-break: break-all;
+    }
+
+    /* ── Steps ───────────────────────────────── */
+    .steps {
+      margin-top: 28px;
+    }
+
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .step-num {
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, #F59E0B, #FACC15);
+      border-radius: 50%;
+      color: #0a1424;
+      font-size: 12px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .step-text {
+      font-size: 13px;
+      color: #94a3b8;
+      line-height: 1.6;
+    }
+
+    .step-text strong {
+      color: #e2e8f0;
+    }
+
+    /* ── Footer ──────────────────────────────── */
+    .footer {
+      text-align: center;
+      padding-top: 8px;
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin-bottom: 20px;
+    }
+
+    .footer-links a {
+      font-size: 12px;
+      color: #64748b;
+      text-decoration: none;
+    }
+
+    .footer-copy {
+      font-size: 11px;
+      color: #475569;
+      line-height: 1.7;
+    }
+
+    .gold { color: #FACC15; }
+    .expiry-badge {
+      display: inline-block;
+      background: rgba(245,158,11,0.1);
+      border: 1px solid rgba(245,158,11,0.25);
+      color: #FACC15;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+
+    <!-- Header -->
+    <div class="header">
+      <div class="logo-circle">
+        <span style="font-size:28px;">🎓</span>
+      </div>
+      <div class="brand-name">দুর্বার একাডেমি</div>
+      <div class="brand-tagline">জ্ঞান • শৃঙ্খলা • সাফল্য</div>
+    </div>
+
+    <!-- Main Card -->
+    <div class="card">
+
+      <div class="icon-row">
+        <div class="icon-badge">✉️</div>
+      </div>
+
+      <h1 class="greeting">আপনার ইমেল নিশ্চিত করুন</h1>
+      <p class="sub-greeting">
+        দুর্বার একাডেমিতে স্বাগতম! আপনার অ্যাকাউন্ট সক্রিয় করতে<br/>
+        নিচের বোতামটিতে ক্লিক করুন।
+      </p>
+
+      <div class="info-box">
+        <strong>⚡ একটি গুরুত্বপূর্ণ পদক্ষেপ বাকি</strong>
+        এই লিংকটি ক্লিক করলে আপনার ইমেল ঠিকানা যাচাই হবে এবং আপনি
+        দুর্বার একাডেমির সম্পূর্ণ ড্যাশবোর্ড, কোর্সসমূহ ও সুবিধা
+        ব্যবহার করতে পারবেন।
+        <span class="expiry-badge">⏱ ২৪ ঘন্টায় মেয়াদ শেষ</span>
+      </div>
+
+      <div class="cta-wrapper">
+        <a href="{{ .ConfirmationURL }}" class="cta-button">
+          ✅ &nbsp; ইমেল নিশ্চিত করুন
+        </a>
+      </div>
+
+      <p class="cta-note">
+        বোতামটি কাজ না করলে, নিচের লিংকটি কপি করে ব্রাউজারে পেস্ট করুন:<br/>
+        <a href="{{ .ConfirmationURL }}">{{ .ConfirmationURL }}</a>
+      </p>
+
+      <div class="divider"></div>
+
+      <!-- Steps -->
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">১</div>
+          <div class="step-text"><strong>উপরের বোতামে ক্লিক করুন</strong> — আপনি সরাসরি নিশ্চিতকরণ পেজে চলে যাবেন।</div>
+        </div>
+        <div class="step">
+          <div class="step-num">২</div>
+          <div class="step-text"><strong>লগইন করুন</strong> — আপনার রেজিস্ট্রেশন করা ইমেল ও পাসওয়ার্ড দিয়ে পোর্টালে প্রবেশ করুন।</div>
+        </div>
+        <div class="step">
+          <div class="step-num">৩</div>
+          <div class="step-text"><strong>প্রস্তুতি শুরু করুন</strong> — BAFA, BMA, BN ও ISSB কোর্সসমূহে ভর্তি হয়ে আপনার স্বপ্নের দিকে এগিয়ে যান।</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="footer-links">
+        <a href="https://durbaracademy.com">হোমপেজ</a>
+        <a href="https://durbaracademy.com/courses">কোর্সসমূহ</a>
+        <a href="mailto:info@durbaracademy.bd">সহায়তা</a>
+      </div>
+      <p class="footer-copy">
+        এই ইমেলটি <span class="gold">দুর্বার একাডেমি</span> থেকে স্বয়ংক্রিয়ভাবে পাঠানো হয়েছে।<br/>
+        আপনি এই অ্যাকাউন্ট তৈরি না করলে এই ইমেলটি উপেক্ষা করুন।<br/>
+        &copy; 2026 দুর্বার একাডেমি। সর্বস্বত্ব সংরক্ষিত।
+      </p>
+    </div>
+
+  </div>
+</body>
+</html>
