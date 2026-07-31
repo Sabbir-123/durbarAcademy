@@ -1,7 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { ArrowRight, ShieldCheck, Award, Sparkles, ChevronRight, BookOpen } from "lucide-react";
+import { motion } from "framer-motion";
+import { ArrowRight, ShieldCheck, Award, Sparkles, BookOpen } from "lucide-react";
 
 interface HeroProps {
   onOpenRegisterModal: (courseId?: string) => void;
@@ -23,59 +24,93 @@ export default function Hero({ onOpenRegisterModal }: HeroProps) {
           className="object-cover object-center scale-105 animate-pulse-subtle"
         />
 
-        {/* Strong Dark / Light Gradient Overlays for High Legibility */}
+        {/* Strong Dark / Light Gradient Overlays */}
         <div className="absolute inset-0 bg-gradient-to-t from-[#07182E] via-[#07182E]/80 to-transparent hero-overlay-t" />
         <div className="absolute inset-0 bg-gradient-to-r from-[#07182E] via-[#07182E]/85 to-transparent hero-overlay-r" />
         <div className="absolute inset-0 bg-black/30 hero-overlay-dark" />
       </div>
 
-      {/* Hero Content - Positioned Bottom Left on Desktop */}
+      {/* Hero Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full">
-        <div className="max-w-3xl space-y-6 sm:space-y-8 animate-fade-in-up">
+        <div className="max-w-3xl space-y-6 sm:space-y-8">
           
-          {/* Subtle Academy Tagline Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#0D2038]/95 border border-[#F59E0B]/30 backdrop-blur-md shadow-lg">
+          {/* Tagline Badge (From Top) */}
+          <motion.div
+            initial={{ opacity: 0, y: -40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: false, amount: 0.2 }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#0D2038]/95 border border-[#F59E0B]/30 backdrop-blur-md shadow-lg"
+          >
             <span className="w-2 h-2 rounded-full bg-[#F59E0B] animate-ping" />
             <span className="text-xs font-bold text-[#F59E0B] tracking-wide uppercase">
-              দুর্বার একাডেমি • ফ্ল্যাগশিপ এডুকেশন
+              দুর্বার একাডেমি • ফ্ল্যাগশিপ ডিফেন্স এডুকেশন
             </span>
-          </div>
+          </motion.div>
 
-          {/* Main Visually Dominant Headline */}
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-white tracking-tight leading-[1.2] sm:leading-[1.12]">
+          {/* Main Headline (From Left) */}
+          <motion.h1
+            initial={{ opacity: 0, x: -60 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: false, amount: 0.2 }}
+            transition={{ duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+            className="text-4xl sm:text-6xl lg:text-7xl font-black text-white tracking-tight leading-[1.2] sm:leading-[1.12]"
+          >
             আজকের প্রস্তুতি।
             <span className="block text-[#FACC15] drop-shadow-[0_2px_10px_rgba(250,204,21,0.25)] mt-2 sm:mt-3 pb-2 overflow-visible">
               আগামীর নেতৃত্ব।
             </span>
-          </h1>
+          </motion.h1>
 
-          {/* Supporting Text */}
-          <p className="text-base sm:text-xl text-slate-200 font-normal leading-relaxed max-w-2xl">
+          {/* Supporting Text (From Bottom) */}
+          <motion.p
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: false, amount: 0.2 }}
+            transition={{ duration: 0.6, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            className="text-base sm:text-xl text-slate-200 font-normal leading-relaxed max-w-2xl"
+          >
             শুধু পরীক্ষার প্রস্তুতি নয়, আত্মবিশ্বাস, শৃঙ্খলা ও সঠিক দিকনির্দেশনায় নিজেকে গড়ে তুলুন{" "}
             <span className="text-[#FACC15] font-semibold">দুর্বার একাডেমির</span> সাথে।
-          </p>
+          </motion.p>
 
-          {/* Action CTAs */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-4">
-            <button
+          {/* Action CTAs (From Right) */}
+          <motion.div
+            initial={{ opacity: 0, x: 60 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: false, amount: 0.2 }}
+            transition={{ duration: 0.6, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-4"
+          >
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => onOpenRegisterModal()}
-              className="px-8 py-4 text-base font-extrabold text-slate-950 bg-gradient-to-r from-[#F59E0B] via-[#FACC15] to-[#F59E0B] hover:from-[#FACC15] hover:to-[#F59E0B] rounded-2xl shadow-2xl gold-glow hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 group"
+              className="px-8 py-4 text-base font-extrabold text-slate-950 bg-gradient-to-r from-[#F59E0B] via-[#FACC15] to-[#F59E0B] rounded-2xl shadow-2xl gold-glow transition-all flex items-center justify-center gap-2 group"
             >
               <span>এখনই ভর্তি হোন</span>
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </button>
+            </motion.button>
 
-            <a
+            <motion.a
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
               href="#courses"
               className="px-8 py-4 text-base font-bold text-white bg-[#0D2038]/80 hover:bg-[#142C4B] border border-white/15 backdrop-blur-md rounded-2xl transition-all flex items-center justify-center gap-2 hover:border-[#F59E0B]/40"
             >
               <BookOpen className="w-5 h-5 text-[#F59E0B]" />
               <span>কোর্স দেখুন</span>
-            </a>
-          </div>
+            </motion.a>
+          </motion.div>
 
-          {/* Subtle Key Highlights Bar */}
-          <div className="pt-6 border-t border-white/10 grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs text-slate-300">
+          {/* Highlights Bar (From Bottom) */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: false, amount: 0.2 }}
+            transition={{ duration: 0.6, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            className="pt-6 border-t border-white/10 grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs text-slate-300"
+          >
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
               <span>আইএসএসবি লিডারশিপ ট্রেনিং</span>
@@ -88,7 +123,7 @@ export default function Hero({ onOpenRegisterModal }: HeroProps) {
               <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
               <span>ডেইলি সাইকোমেট্রিক ও স্ক্রিনিং টেস্ট</span>
             </div>
-          </div>
+          </motion.div>
 
         </div>
       </div>

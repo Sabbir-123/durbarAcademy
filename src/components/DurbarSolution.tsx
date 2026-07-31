@@ -1,7 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { UserCheck, Users, BookOpen, CheckCircle2, Sparkles, ArrowRight } from "lucide-react";
+import { motion } from "framer-motion";
+import { UserCheck, Users, BookOpen } from "lucide-react";
 
 export default function DurbarSolution() {
   const features = [
@@ -38,10 +39,15 @@ export default function DurbarSolution() {
     <section id="solution" className="py-16 sm:py-24 relative bg-[#07182E] overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         
-        {/* Large Rounded Rectangular Visual Container */}
-        <div className="relative rounded-3xl lg:rounded-[36px] overflow-hidden border border-white/15 bg-[#0D2038] shadow-2xl durbar-solution-card">
-          
-          {/* Background Cinematic Image - Fills the large container */}
+        {/* Large Rounded Rectangular Visual Container (Scroll Reveal) */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 50 }}
+          whileInView={{ opacity: 1, scale: 1, y: 0 }}
+          viewport={{ once: false, amount: 0.15 }}
+          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+          className="relative rounded-3xl lg:rounded-[36px] overflow-hidden border border-white/15 bg-[#0D2038] shadow-2xl durbar-solution-card"
+        >
+          {/* Background Cinematic Image */}
           <div className="absolute inset-0 z-0">
             <Image
               src="/images/durbar_mentor_guidance.png"
@@ -49,7 +55,7 @@ export default function DurbarSolution() {
               fill
               className="object-cover object-right lg:object-center opacity-85"
             />
-            {/* Subtle Gradient Overlays for High Legibility */}
+            {/* Subtle Gradient Overlays */}
             <div className="absolute inset-0 bg-gradient-to-r from-[#07182E] via-[#07182E]/90 to-transparent hidden lg:block durbar-solution-overlay-r" />
             <div className="absolute inset-0 bg-gradient-to-t from-[#07182E] via-[#07182E]/80 to-transparent lg:hidden durbar-solution-overlay-t" />
           </div>
@@ -57,9 +63,14 @@ export default function DurbarSolution() {
           {/* Content Wrapper */}
           <div className="relative z-10 p-6 sm:p-10 lg:p-14">
             
-            {/* Dark Navy Content Panel Over LEFT Side on Desktop */}
-            <div className="w-full lg:max-w-2xl bg-[#081B33]/95 backdrop-blur-md rounded-2xl lg:rounded-3xl p-6 sm:p-10 border border-white/10 shadow-2xl space-y-8 durbar-solution-panel">
-              
+            {/* Dark Navy Content Panel Over LEFT Side on Desktop (From Left) */}
+            <motion.div
+              initial={{ opacity: 0, x: -60 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: false, amount: 0.2 }}
+              transition={{ duration: 0.7, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              className="w-full lg:max-w-2xl bg-[#081B33]/95 backdrop-blur-md rounded-2xl lg:rounded-3xl p-6 sm:p-10 border border-white/10 shadow-2xl space-y-8 durbar-solution-panel"
+            >
               {/* Top Eyebrow */}
               <div className="space-y-3">
                 <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-black tracking-widest uppercase">
@@ -82,8 +93,12 @@ export default function DurbarSolution() {
                   const isLast = idx === features.length - 1;
 
                   return (
-                    <div
+                    <motion.div
                       key={feat.id}
+                      initial={{ opacity: 0, y: 30 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: false, amount: 0.2 }}
+                      transition={{ duration: 0.5, delay: 0.3 + idx * 0.15 }}
                       className={`flex items-start gap-4 sm:gap-5 ${
                         !isLast ? "border-b border-white/10 pb-6" : ""
                       }`}
@@ -99,42 +114,21 @@ export default function DurbarSolution() {
                           <h3 className="text-base sm:text-lg font-bold text-white leading-snug">
                             {feat.title}
                           </h3>
-                          {idx === 0 && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#F59E0B] inline-block animate-ping" />
-                          )}
                         </div>
 
-                        {/* Detail line indicator */}
-                        <p className="text-xs sm:text-sm text-slate-300 leading-relaxed pl-2 border-l-2 border-[#F59E0B]/60">
+                        <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-normal">
                           {feat.description}
                         </p>
                       </div>
-                    </div>
+                    </motion.div>
                   );
                 })}
               </div>
 
-              {/* CTA Action */}
-              <div className="pt-4 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-300">
-                <div className="flex items-center gap-2 text-emerald-400 font-semibold">
-                  <CheckCircle2 className="w-4 h-4 shrink-0" />
-                  <span>শতভাগ শৃঙ্খলানির্ভর একাডেমি সাপোর্ট</span>
-                </div>
-                <a
-                  href="#courses"
-                  className="w-full sm:w-auto px-6 py-3 text-xs font-bold text-black bg-[#F59E0B] hover:bg-[#FACC15] rounded-xl transition-all flex items-center justify-center gap-2"
-                >
-                  <span>সমাধানের অংশ হোন</span>
-                  <ArrowRight className="w-4 h-4" />
-                </a>
-              </div>
-
-            </div>
-
+            </motion.div>
           </div>
 
-        </div>
-
+        </motion.div>
       </div>
     </section>
   );

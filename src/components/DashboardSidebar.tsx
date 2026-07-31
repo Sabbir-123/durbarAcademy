@@ -8,23 +8,24 @@ import {
   GraduationCap,
   LayoutDashboard,
   BookOpen,
-  Calendar,
   LogOut,
   UserCheck,
   TrendingUp,
-  FileText,
   HelpCircle,
   ShieldAlert,
-  Coins
+  Coins,
+  Trophy,
 } from "lucide-react";
 import { SITE_CONFIG } from "@/config/siteConfig";
 
 interface SidebarProps {
   role: "student" | "teacher" | "accountant" | "admin";
   activeTab: string;
+  onTabChange?: (tab: string) => void;
+  userName?: string;
 }
 
-export default function DashboardSidebar({ role, activeTab }: SidebarProps) {
+export default function DashboardSidebar({ role, activeTab, onTabChange, userName }: SidebarProps) {
   const router = useRouter();
   const supabase = createClient();
 
@@ -36,23 +37,26 @@ export default function DashboardSidebar({ role, activeTab }: SidebarProps) {
   const menuItems = {
     student: [
       { id: "dashboard", label: "ড্যাশবোর্ড", icon: LayoutDashboard, href: "/student/dashboard" },
-      { id: "courses", label: "আমার কোর্সসমূহ", icon: BookOpen, href: "#courses" },
-      { id: "tickets", label: "সহায়তা টিকিট", icon: HelpCircle, href: "#tickets" },
+      { id: "courses", label: "আমার কোর্সসমূহ", icon: BookOpen, href: "/courses" },
+      { id: "tickets", label: "সহায়তা টিকিট", icon: HelpCircle, href: "/student/dashboard#tickets" },
     ],
     teacher: [
-      { id: "dashboard", label: "মেন্টর ড্যাশবোর্ড", icon: LayoutDashboard, href: "/teacher/dashboard" },
-      { id: "content", label: "কারিকুলাম বিল্ডার", icon: BookOpen, href: "#content" },
-      { id: "tickets", label: "শিক্ষার্থী টিকিট", icon: HelpCircle, href: "#tickets" },
+      { id: "dashboard", label: "ইনস্ট্রাক্টর ড্যাশবোর্ড", icon: LayoutDashboard, href: "/teacher/dashboard" },
+      { id: "courses", label: "কোর্স কারিকুলাম", icon: BookOpen, href: "/teacher/dashboard#courses" },
+      { id: "stories", label: "সাকসেস স্টোরি", icon: Trophy, href: "/teacher/dashboard#stories" },
     ],
     accountant: [
       { id: "dashboard", label: "ফিন্যান্সিয়াল ড্যাশবোর্ড", icon: LayoutDashboard, href: "/accountant/dashboard" },
-      { id: "reports", label: "আয়-ব্যয় রিপোর্ট", icon: Coins, href: "#reports" },
-      { id: "budget", label: "বাজেট প্ল্যানার", icon: TrendingUp, href: "#budget" },
+      { id: "reports", label: "আয়-ব্যয় রিপোর্ট", icon: Coins, href: "/accountant/dashboard#reports" },
+      { id: "budget", label: "বাজেট প্ল্যানার", icon: TrendingUp, href: "/accountant/dashboard#budget" },
     ],
     admin: [
-      { id: "dashboard", label: "অ্যাডমিন প্যানেল", icon: LayoutDashboard, href: "/admin/dashboard" },
-      { id: "users", label: "ইউজার রুল ম্যানেজমেন্ট", icon: UserCheck, href: "#users" },
-      { id: "audit", label: "অডিট ট্রেইল", icon: ShieldAlert, href: "#audit" },
+      { id: "dashboard", label: "ড্যাশবোর্ড (Overview)", icon: LayoutDashboard, href: "/admin/dashboard#dashboard" },
+      { id: "users", label: "ইউজার রুল ম্যানেজমেন্ট", icon: UserCheck, href: "/admin/dashboard#users" },
+      { id: "courses", label: "কোর্সসমূহ পরিচালনা", icon: BookOpen, href: "/admin/dashboard#courses" },
+      { id: "stories", label: "সাকসেস স্টোরি", icon: Trophy, href: "/admin/dashboard#stories" },
+      { id: "finance", label: "ফাইনান্স", icon: Coins, href: "/admin/dashboard#finance" },
+      { id: "audit", label: "অডিট ট্রেইল", icon: ShieldAlert, href: "/admin/dashboard#audit" },
     ],
   };
 
@@ -60,11 +64,10 @@ export default function DashboardSidebar({ role, activeTab }: SidebarProps) {
 
   return (
     <aside className="w-64 bg-[#0D2038] border-r border-white/10 flex flex-col justify-between shrink-0 h-screen sticky top-0">
-      
       {/* Brand & Profile Header */}
-      <div className="p-6 border-b border-white/5 space-y-6">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-[#07182E] border border-[#F59E0B]/30 flex items-center justify-center shadow-inner">
+      <div className="p-6 border-b border-white/5 space-y-5">
+        <Link href="/" className="flex items-center gap-3 group">
+          <div className="w-9 h-9 rounded-xl bg-[#07182E] border border-[#F59E0B]/30 flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform">
             <GraduationCap className="w-5 h-5 text-[#F59E0B]" />
           </div>
           <div>
@@ -72,10 +75,21 @@ export default function DashboardSidebar({ role, activeTab }: SidebarProps) {
               {SITE_CONFIG.name}
             </span>
             <span className="text-[9px] font-extrabold text-[#FACC15] uppercase tracking-widest block">
-              {role} portal
+              {role === "admin" ? "super admin" : role} portal
             </span>
           </div>
-        </div>
+        </Link>
+
+        {userName && (
+          <div className="p-3 bg-[#07182E] border border-white/5 rounded-2xl space-y-1 shadow-inner">
+            <span className="text-[9px] font-bold text-[#FACC15] uppercase tracking-wider block">
+              {role === "admin" ? "super admin center" : "user profile"}
+            </span>
+            <div className="text-xs font-bold text-white truncate">
+              স্বাগতম, {userName}!
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Nav Links */}
@@ -88,6 +102,11 @@ export default function DashboardSidebar({ role, activeTab }: SidebarProps) {
             <Link
               key={item.id}
               href={item.href}
+              onClick={() => {
+                if (onTabChange) {
+                  onTabChange(item.id);
+                }
+              }}
               className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all ${
                 isActive
                   ? "bg-[#F59E0B] text-black shadow-lg"
@@ -115,7 +134,6 @@ export default function DashboardSidebar({ role, activeTab }: SidebarProps) {
           <span>লগআউট করুন</span>
         </button>
       </div>
-
     </aside>
   );
 }

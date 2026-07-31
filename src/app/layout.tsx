@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Hind_Siliguri, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
+import MotionGraphicsCanvas from "@/components/MotionGraphicsCanvas";
 
 const hindSiliguri = Hind_Siliguri({
   subsets: ["bengali", "latin"],
@@ -17,22 +18,23 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "দুর্বার একাডেমি | জ্ঞান • শৃঙ্খলা • সাফল্য | সেরা অ্যাডমিশন ও একাডেমি কোচিং",
+  title: "দুর্বার একাডেমি | জ্ঞান • শৃঙ্খলা • সাফল্য | সেরা ডিফেন্স ও মিলিটারি কোচিং",
   description:
-    "বুয়েট, মেডিকেল ও ভার্সিটি কাইন্ড্রেড ভর্তি যুদ্ধে তোমার অপ্রতিরোধ্য সঙ্গী — দুর্বার একাডেমি। লাইভ ক্লাস, ডেইলি OMR পরীক্ষা, পার্সোনালাইজড ডাউট সলভ এবং সেরা মেন্টরদের সেরা দিকনির্দেশনা।",
+    "বাংলাদেশ বিমান বাহিনী, নৌবাহিনী, সেনাবাহিনী (BAFA, BMA, BN, ISSB) ভর্তি পরীক্ষায় তোমার অপ্রতিরোধ্য সঙ্গী — দুর্বার একাডেমি। লাইভ ক্লাস, ডেইলি OMR পরীক্ষা, পার্সোনালাইজড ডাউট সলভ এবং সাবেক ডিফেন্স অফিসার মেন্টরদের দিকনির্দেশনা।",
   keywords: [
     "দুর্বার একাডেমি",
     "Durbar Academy",
-    "BUET Admission Coaching",
-    "Medical Admission Bangladesh",
-    "Varsity Admission Prep",
-    "HSC Coaching Bangladesh",
-    "Bengali Educational Academy",
+    "BAFA Preliminary Course",
+    "BMA Preliminary Course",
+    "BN Preliminary Course",
+    "ISSB Course",
+    "ISSB Rapid Course",
+    "Defense Officer Coaching Bangladesh",
   ],
   authors: [{ name: "দুর্বার একাডেমি" }],
   openGraph: {
     title: "দুর্বার একাডেমি | জ্ঞান • শৃঙ্খলা • সাফল্য",
-    description: "বুয়েট, মেডিকেল ও ভার্সিটি কাইন্ড্রেড ভর্তি যুদ্ধে তোমার অপ্রতিরোধ্য সঙ্গী।",
+    description: "ডিফেন্স ও মিলিটারি ভর্তি পরীক্ষায় তোমার অপ্রতিরোধ্য সঙ্গী।",
     siteName: "দুর্বার একাডেমি",
     locale: "bn_BD",
     type: "website",
@@ -68,8 +70,9 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body suppressHydrationWarning className="min-h-full bg-[#07182E] text-white selection:bg-[#F59E0B] selection:text-black flex flex-col font-sans">
-        {children}
+      <body suppressHydrationWarning className="min-h-full bg-[#07182E] text-white selection:bg-[#F59E0B] selection:text-black flex flex-col font-sans relative">
+        <MotionGraphicsCanvas />
+        <div className="relative z-10 flex-1 flex flex-col">{children}</div>
       </body>
     </html>
   );

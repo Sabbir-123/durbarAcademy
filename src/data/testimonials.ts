@@ -3,56 +3,73 @@ export interface StudentSuccess {
   name: string;
   rank: string;
   institution: string;
+  category?: "bafa" | "bma" | "bn" | "issb" | "general";
   program: string;
   hscCollege: string;
   quote: string;
   score: string;
-  badgeColor: string;
+  badgeColor: "gold" | "emerald" | "blue";
+  imageUrl?: string;
+  published?: boolean;
 }
 
-export const TESTIMONIALS: StudentSuccess[] = [
+export const INITIAL_SUCCESS_STORIES: StudentSuccess[] = [
   {
-    id: "buet-1",
-    name: "ফাহিম রেজওয়ান",
-    rank: "মেধা স্থান: ০১",
-    institution: "বুয়েট (BUET CSE '24)",
-    program: "ইঞ্জিনিয়ারিং ভর্তি প্রোগ্রাম",
+    id: "bafa-1",
+    name: "ক্যাডেট ফাহিম রেজওয়ান",
+    rank: "মেধা স্থান: ০১ (ফ্লাইট ক্যাডেট)",
+    institution: "বাংলাদেশ বিমান বাহিনী (BAFA 88th Officer Cadet)",
+    category: "bafa",
+    program: "BAFA Preliminary & Psychometric Mastery",
     hscCollege: "নটর ডেম কলেজ, ঢাকা",
-    quote: "দুর্বার একাডেমির ডেইলি ওএমআর টেস্ট ও কনসেপ্ট সলভিং লাইভ ক্লাস আমার বুয়েট জয়ের মূল ভিত্তি ছিল। এখানকার ট্রিকস ও পার্সোনালাইজড সাপোর্ট অতুলনীয়!",
-    score: "মার্কস: ৩৮৫/৪০০",
+    quote: "দুর্বার একাডেমির স্পেশাল পাইলট স্ক্রিনিং আইকিউ টেস্ট ও প্রাক্তন স্কোয়াড্রন লিডার মেন্টরদের ১-অন-১ গাইডলাইন আমার বিমান বাহিনী জয়ের মূল ভিত্তি ছিল।",
+    score: "আইকিউ স্কোর: ৯৮/১০০",
     badgeColor: "gold",
+    imageUrl: "https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3?auto=format&fit=crop&w=600&q=80",
+    published: true,
   },
   {
-    id: "dmc-1",
-    name: "নাসরিন আক্তার নাবিলা",
-    rank: "মেধা স্থান: ০২",
-    institution: "ঢাকা মেডিকেল কলেজ (DMC)",
-    program: "মেডিকেল প্রাইম ব্যাচ",
-    hscCollege: "ভিকারুননিসা নূন স্কুল অ্যান্ড কলেজ",
-    quote: "মেডিকেল ভর্তি পরীক্ষায় প্রতিটি সেকেন্ড গুরুত্বপূর্ণ। দুরবারের সময় নিয়ন্ত্রণ গাইডলাইন ও ডেইলি এক্সাম আমাকে কনফিডেন্ট বানিয়েছিল।",
-    score: "মার্কস: ৮৯.৫/১০০",
-    badgeColor: "emerald",
-  },
-  {
-    id: "du-1",
-    name: "মেহেদী হাসান সাকিব",
-    rank: "মেধা স্থান: ০৫",
-    institution: "ঢাকা বিশ্ববিদ্যালয় (DU A-Unit)",
-    program: "ভার্সিটি ক-ইউনিট স্পেশাল",
+    id: "bma-1",
+    name: "ক্যাডেট তৌহিদ হাসান",
+    rank: "মেধা স্থান: ০২ (জেন্টলম্যান ক্যাডেট)",
+    institution: "বাংলাদেশ মিলিটারি একাডেমি (BMA 91st Long Course)",
+    category: "bma",
+    program: "BMA Preliminary Officer Cadet Course",
     hscCollege: "ঢাকা কলেজ, ঢাকা",
-    quote: "লিখিত পরীক্ষার ভয় দূর করেছিল দুরবারের স্পেশাল ম্যানুয়াল খাতা মূল্যায়নের সিস্টেম। প্রতিটা ভুলের সলিউশন সাথে সাথে পেয়েছি।",
-    score: "মার্কস: ১০৮.৫/১২০",
-    badgeColor: "gold",
+    quote: "বিএমএ প্রিলিমিনারি লিখিত পরীক্ষা ও ফিজিক্যাল ফিটনেস ড্রিলগুলোতে দুর্বারের সাবেক অফিসার স্যারদের পরামর্শ আমাকে আত্মবিশ্বাসী করেছিল।",
+    score: "লিখিত মার্কস: ১৮৫/২০০",
+    badgeColor: "emerald",
+    imageUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80",
+    published: true,
   },
   {
-    id: "ckruet-1",
-    name: "আরিফ শাহরিয়ার",
-    rank: "মেধা স্থান: ১২",
-    institution: "রুয়েট (RUET CSE)",
-    program: "ইঞ্জিনিয়ারিং ক্র্যাশ কোর্স",
+    id: "issb-1",
+    name: "সাবরিনা আক্তার নাবিলা",
+    rank: "ISSB গ্রিন কার্ড হোল্ডার (অফিসার)",
+    institution: "আইএসএসবি (ISSB 4-Day Green Card Recommendation)",
+    category: "issb",
+    program: "ISSB Rapid Crash & GTO Leadership Bootcamp",
+    hscCollege: "ভিকারুননিসা নূন স্কুল অ্যান্ড কলেজ",
+    quote: "আইএসএসবি সাইকোমেট্রিক টেস্ট, পিপিডিটি এবং জিটিও আউটডোর টাক্স প্র্যাকটিসে দুর্বারের সরাসরি সাপোর্ট না পেলে গ্রিন কার্ড পাওয়া সম্ভব হতো না।",
+    score: "রেকমেন্ডেশন: সিলেক্টেড",
+    badgeColor: "gold",
+    imageUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80",
+    published: true,
+  },
+  {
+    id: "bn-1",
+    name: "ক্যাডেট আরিফ শাহরিয়ার",
+    rank: "মেধা স্থান: ০৩ (মিডশিপম্যান)",
+    institution: "বাংলাদেশ নৌবাহিনী (BN 2025-A Officer Cadet)",
+    category: "bn",
+    program: "BN Officer Cadet Full Preparation",
     hscCollege: "রাজশাহী কলেজ",
-    quote: "অফলাইন আর অনলাইনের সেরা সংমিশ্রণ দুর্বার একাডেমি। শেষ ৩ মাসের রিভিশন মডিউল ছিল আমার টার্নিং পয়েন্ট।",
-    score: "মার্কস: ৩৪৮/৪০০",
+    quote: "নৌবাহিনীর নেভাল আইকিউ ড্রিল এবং ভাইভা ফেস করার প্রতিটি ট্রিকস দুর্বার মেন্টরদের লাইভ ইন্টারঅ্যাকশনে পেয়েছিলাম।",
+    score: "মেরিট অবস্থান: ৩য়",
     badgeColor: "emerald",
+    imageUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=600&q=80",
+    published: true,
   },
 ];
+
+export const TESTIMONIALS = INITIAL_SUCCESS_STORIES;

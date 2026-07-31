@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
+import CoursesSliderSection from "@/components/CoursesSliderSection";
 import StudentChallenge from "@/components/StudentChallenge";
 import DurbarSolution from "@/components/DurbarSolution";
 import LearningProcess from "@/components/LearningProcess";
@@ -14,7 +15,7 @@ import FAQSection from "@/components/FAQSection";
 import Footer from "@/components/Footer";
 import SyllabusModal from "@/components/SyllabusModal";
 import RegistrationModal from "@/components/RegistrationModal";
-import { Course, COURSES } from "@/data/courses";
+import { Course } from "@/data/courses";
 
 export default function Home() {
   const [syllabusCourse, setSyllabusCourse] = useState<Course | null>(null);
@@ -33,6 +34,9 @@ export default function Home() {
 
       {/* Hero Section */}
       <Hero onOpenRegisterModal={handleOpenRegisterModal} />
+
+      {/* Flagship Courses Horizontal Slider - Under Hero */}
+      <CoursesSliderSection onOpenRegisterModal={handleOpenRegisterModal} />
 
       {/* Student Challenge (Pain Points) Section - Reference Screenshot 02 */}
       <StudentChallenge />

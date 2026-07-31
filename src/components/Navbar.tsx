@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { GraduationCap, ArrowRight, Menu, X, Sparkles } from "lucide-react";
+import { GraduationCap, ArrowRight, Menu, X } from "lucide-react";
 import { SITE_CONFIG } from "@/config/siteConfig";
 import ThemeToggler from "./ThemeToggler";
 
 interface NavbarProps {
-  onOpenRegisterModal: (courseId?: string) => void;
+  onOpenRegisterModal?: (courseId?: string) => void;
 }
 
 export default function Navbar({ onOpenRegisterModal }: NavbarProps) {
@@ -23,10 +23,11 @@ export default function Navbar({ onOpenRegisterModal }: NavbarProps) {
   }, []);
 
   const navLinks = [
-    { name: "হোম", href: "#hero" },
-    { name: "কোর্সসমূহ", href: "#courses" },
-    { name: "আমাদের সম্পর্কে", href: "#challenge" },
-    { name: "FAQ", href: "#faq" },
+    { name: "হোম", href: "/" },
+    { name: "কোর্সসমূহ", href: "/courses" },
+    { name: "সাকসেস স্টোরি", href: "/success-stories" },
+    { name: "আমাদের সম্পর্কে", href: "/#challenge" },
+    { name: "FAQ", href: "/#faq" },
   ];
 
   return (
@@ -56,15 +57,15 @@ export default function Navbar({ onOpenRegisterModal }: NavbarProps) {
         </Link>
 
         {/* Center: Navigation Links */}
-        <nav className="hidden md:flex items-center gap-8 text-sm font-semibold text-slate-700">
+        <nav className="hidden md:flex items-center gap-7 text-sm font-semibold text-slate-700">
           {navLinks.map((link) => (
-            <a
+            <Link
               key={link.name}
               href={link.href}
               className="hover:text-[#D97706] transition-colors relative py-1 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-[2px] after:bg-[#F59E0B] hover:after:w-full after:transition-all"
             >
               {link.name}
-            </a>
+            </Link>
           ))}
         </nav>
 
@@ -104,14 +105,14 @@ export default function Navbar({ onOpenRegisterModal }: NavbarProps) {
         <div className="md:hidden mt-2 bg-white rounded-2xl shadow-2xl border border-slate-200 p-5 space-y-4 animate-fade-in">
           <nav className="flex flex-col space-y-2">
             {navLinks.map((link) => (
-              <a
+              <Link
                 key={link.name}
                 href={link.href}
                 onClick={() => setMobileMenuOpen(false)}
                 className="text-slate-800 hover:text-[#D97706] py-2 px-3 text-sm font-bold rounded-lg hover:bg-slate-50 transition-colors border-b border-slate-100"
               >
                 {link.name}
-              </a>
+              </Link>
             ))}
           </nav>
           <div className="pt-2">

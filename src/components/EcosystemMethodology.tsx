@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { CheckCircle2, ShieldCheck, Zap, Laptop, FileSpreadsheet, Headphones, ArrowRight, Award } from "lucide-react";
+import { motion } from "framer-motion";
+import { CheckCircle2, Zap, Laptop, FileSpreadsheet, Headphones, ArrowRight, Award } from "lucide-react";
 
 export default function EcosystemMethodology() {
   const [activeStep, setActiveStep] = useState<number>(0);
@@ -12,15 +13,16 @@ export default function EcosystemMethodology() {
       id: 0,
       number: "০১",
       title: "কনসেপ্ট বিল্ডিং ও স্মার্ট লাইভ ক্লাস",
-      subtitle: "মুখস্থ নয়, ফিজিক্স ও ম্যাথের বাস্তবধর্মী অ্যানালিটিক্যাল শিখন",
+      subtitle: "মুখস্থ নয়, ফিজিক্স ও ডিফেন্স আইকিউ এর বাস্তবধর্মী শিখন",
       icon: Laptop,
       details: [
-        "বুয়েট ও ডিএমসির অভিজ্ঞ টপ র‍্যাঙ্কারদের রিয়েল-টাইম ইন্টারেক্টিভ ক্লাস",
+        "সাবেক ডিফেন্স অফিসার ও বুয়েট গ্র্যাজুয়েটদের রিয়েল-টাইম ইন্টারেক্টিভ ক্লাস",
         "এইচডি ডিজিটাল হোয়াইটবোর্ডে প্রতিটি সূত্রের ডেরিভেশন ও ভিজ্যুয়াল সলভিং",
         "লাইভ ক্লাসেই যেকোনো না বোঝা লাইনের তাৎক্ষণিক উত্তর ও ক্লারিফিকেশন",
         "ক্লাস শেষ হতেই অটো-জেনারেটেড এইচডি পিডিএফ লেকচার নোট ফাইল ডাউনলোড",
       ],
       tag: "ধাপ ১: কনসেপ্ট ক্লিয়ারিং",
+      direction: "left" as const,
     },
     {
       id: 1,
@@ -35,6 +37,7 @@ export default function EcosystemMethodology() {
         "অফলাইন শাখায় সশরীরে ওএমআর শিট সাবমিশন ও কম্পিউটার স্ক্যানিং",
       ],
       tag: "ধাপ ২: প্র্যাকটিস ও অ্যাসেসমেন্ট",
+      direction: "top" as const,
     },
     {
       id: 2,
@@ -43,12 +46,13 @@ export default function EcosystemMethodology() {
       subtitle: "একটি প্রশ্নও যেন না জমে থাকে, ২৪/৭ পার্সোনাল মেন্টর সাপোর্ট",
       icon: Headphones,
       details: [
-        "প্রশ্নের ছবি বা নোট পাঠালেই ২ মিনিটের মধ্যে বুয়েটিয়ানদের সমাধান",
+        "প্রশ্নের ছবি বা নোট পাঠালেই ২ মিনিটের মধ্যে মেন্টরদের সমাধান",
         "পরীক্ষায় কম নম্বর পাওয়ার কারণ চিহ্নিত করে পার্সোনালাইজড দিকনির্দেশনা",
         "মানসিক চাপ জয় করা ও ভর্তি পরীক্ষার সঠিক স্ট্র্যাটেজি গাইডেন্স",
         "অফলাইন মেন্টরিং আওয়ারে সশরীরে টিচারদের সাথে আলোচনার সুযোগ",
       ],
       tag: "ধাপ ৩: পার্সোনালাইজড সাপোর্ট",
+      direction: "right" as const,
     },
   ];
 
@@ -56,8 +60,14 @@ export default function EcosystemMethodology() {
     <section id="ecosystem" className="py-16 sm:py-24 relative bg-gradient-to-b from-[#07182E] via-[#0B213B] to-[#07182E]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* Header */}
-        <div className="text-center max-w-3xl mx-auto space-y-4 mb-16">
+        {/* Header (From Top) */}
+        <motion.div
+          initial={{ opacity: 0, y: -50 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: false, amount: 0.2 }}
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          className="text-center max-w-3xl mx-auto space-y-4 mb-16"
+        >
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
             <Zap className="w-3.5 h-3.5" />
             <span>দুর্বার লার্নিং মেথডোলজি</span>
@@ -66,19 +76,32 @@ export default function EcosystemMethodology() {
             যে ৩-ধাপে আমরা নিশ্চিত করি <span className="gold-gradient-text">তোমার ভর্তি সাফল্য</span>
           </h2>
           <p className="text-sm sm:text-base text-slate-300">
-            শুধু পড়ালেই হয় না, নিয়মিত মূল্যায়ন এবং সার্বক্ষণিক তত্ত্বাবধানই এনে দেয় স্বপ্নের ভার্সিটির মেধা তালিকার প্রথম সারি।
+            শুধু পড়ালেই হয় না, নিয়মিত মূল্যায়ন এবং সার্বক্ষণিক তত্ত্বাবধানই এনে দেয় স্বপ্নের কোর্সের মেধা তালিকার প্রথম সারি।
           </p>
-        </div>
+        </motion.div>
 
-        {/* Step Navigation Cards */}
+        {/* Step Navigation Cards (Directional Entrances) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           {steps.map((step) => {
             const Icon = step.icon;
             const isActive = activeStep === step.id;
 
+            const initialPos =
+              step.direction === "left"
+                ? { opacity: 0, x: -60 }
+                : step.direction === "right"
+                ? { opacity: 0, x: 60 }
+                : { opacity: 0, y: -40 };
+
             return (
-              <button
+              <motion.button
                 key={step.id}
+                initial={initialPos}
+                whileInView={{ opacity: 1, x: 0, y: 0 }}
+                viewport={{ once: false, amount: 0.2 }}
+                transition={{ duration: 0.6, delay: step.id * 0.15 }}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
                 onClick={() => setActiveStep(step.id)}
                 className={`p-6 rounded-3xl text-left transition-all duration-300 relative border overflow-hidden ${
                   isActive
@@ -101,13 +124,19 @@ export default function EcosystemMethodology() {
                 {isActive && (
                   <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-[#F59E0B] to-emerald-400" />
                 )}
-              </button>
+              </motion.button>
             );
           })}
         </div>
 
-        {/* Detailed View Box */}
-        <div className="rounded-3xl bg-[#0D2038] border border-white/10 p-6 sm:p-10 shadow-2xl">
+        {/* Detailed View Box (From Bottom) */}
+        <motion.div
+          initial={{ opacity: 0, y: 60 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: false, amount: 0.15 }}
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          className="rounded-3xl bg-[#0D2038] border border-white/10 p-6 sm:p-10 shadow-2xl"
+        >
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
             
             {/* Content Details */}
@@ -159,7 +188,7 @@ export default function EcosystemMethodology() {
                   <div className="absolute bottom-4 left-4 right-4 bg-[#07182E]/90 backdrop-blur-md p-3 rounded-xl border border-white/10 flex items-center gap-3">
                     <Award className="w-8 h-8 text-[#F59E0B] shrink-0" />
                     <div>
-                      <span className="text-xs font-bold text-white block">সরাসরি বুয়েট ও মেডিকেল টিচার্স</span>
+                      <span className="text-xs font-bold text-white block">সরাসরি সাবেক ডিফেন্স অফিসার ও বুয়েটিয়ান্স</span>
                       <span className="text-[10px] text-slate-300">প্রতিটি কনসেপ্টের ডিপ অ্যানালাইসিস</span>
                     </div>
                   </div>
@@ -168,7 +197,7 @@ export default function EcosystemMethodology() {
             </div>
 
           </div>
-        </div>
+        </motion.div>
 
       </div>
     </section>

@@ -48,15 +48,25 @@
   background: #F59E0B;
 }
 
-/* Animations */
+/* Motion Kinetics & Keyframe Animations */
 @keyframes pulse-subtle {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.85; transform: scale(1.02); }
 }
 
 @keyframes float-slow {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-8px); }
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(1deg); }
+}
+
+@keyframes kinetic-glow {
+  0%, 100% { filter: drop-shadow(0 0 15px rgba(245, 158, 11, 0.3)); }
+  50% { filter: drop-shadow(0 0 30px rgba(139, 92, 246, 0.5)); }
+}
+
+@keyframes shimmer-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
 .animate-pulse-subtle {
@@ -65,6 +75,22 @@
 
 .animate-float {
   animation: float-slow 4s infinite ease-in-out;
+}
+
+.animate-kinetic-glow {
+  animation: kinetic-glow 5s infinite ease-in-out;
+}
+
+.shimmer-effect {
+  position: relative;
+  overflow: hidden;
+}
+.shimmer-effect::after {
+  content: "";
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+  animation: shimmer-slide 2.5s infinite;
 }
 
 /* Custom Utilities */
@@ -189,6 +215,123 @@ html.light aside {
               0 1px 3px rgba(0, 0, 0, 0.01) !important;
 }
 
+/* SUCCESS STORY & TESTIMONIAL LIGHT MODE FIXES */
+html.light .quote-box,
+html.light .bg-\[\#07182E\]\/80,
+html.light .bg-\[\#07182E\]\/90 {
+  background: #F1F5F9 !important;
+  border-color: rgba(139, 92, 246, 0.2) !important;
+}
+
+html.light .quote-box p,
+html.light .quote-box span,
+html.light .bg-\[\#07182E\]\/80 p,
+html.light .bg-\[\#07182E\]\/80 span,
+html.light p.italic,
+html.light .italic {
+  color: #1E293B !important;
+  font-weight: 500 !important;
+}
+
+html.light svg.text-\[\#F59E0B\]\/30,
+html.light svg.text-\[\#F59E0B\]\/40 {
+  color: rgba(139, 92, 246, 0.35) !important;
+}
+
+/* LIGHT MODE COURSES CARDS */
+html.light .course-card {
+  background: #FFFFFF !important;
+  background-image: none !important;
+  border-color: rgba(139, 92, 246, 0.18) !important;
+  box-shadow: 0 10px 30px -10px rgba(139, 92, 246, 0.1), 0 2px 8px rgba(0, 0, 0, 0.03) !important;
+}
+
+html.light .course-card:hover {
+  border-color: rgba(139, 92, 246, 0.4) !important;
+  box-shadow: 0 16px 40px -10px rgba(139, 92, 246, 0.18) !important;
+}
+
+html.light .course-card h3 {
+  color: #0F172A !important;
+}
+
+html.light .course-card p {
+  color: #475569 !important;
+}
+
+html.light .course-card ul li span {
+  color: #334155 !important;
+}
+
+html.light .card-image-overlay {
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.4) 0%, transparent 60%, rgba(0, 0, 0, 0.3) 100%) !important;
+}
+
+html.light .course-badge {
+  background: rgba(255, 255, 255, 0.92) !important;
+  color: #7C3AED !important;
+  border-color: rgba(139, 92, 246, 0.3) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+}
+
+html.light .card-batch-badge {
+  background: rgba(15, 23, 42, 0.85) !important;
+  color: #F8FAFC !important;
+}
+
+html.light .course-meta-box {
+  background: #F1F5F9 !important;
+  border-color: rgba(139, 92, 246, 0.12) !important;
+  color: #334155 !important;
+}
+
+html.light .course-meta-box span {
+  color: #334155 !important;
+}
+
+html.light .card-footer {
+  border-top-color: rgba(139, 92, 246, 0.12) !important;
+}
+
+html.light .course-price-text {
+  color: #7C3AED !important;
+  -webkit-text-fill-color: #7C3AED !important;
+}
+
+html.light .seat-badge {
+  background: rgba(139, 92, 246, 0.08) !important;
+  color: #7C3AED !important;
+}
+
+html.light .course-details-btn {
+  background: #F1F5F9 !important;
+  color: #0F172A !important;
+  border-color: rgba(139, 92, 246, 0.2) !important;
+}
+
+html.light .course-details-btn:hover {
+  background: #E2E8F0 !important;
+  color: #7C3AED !important;
+}
+
+html.light .course-enroll-btn {
+  background: linear-gradient(135deg, #8B5CF6 0%, #F97316 100%) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 14px rgba(139, 92, 246, 0.25) !important;
+}
+
+html.light .course-enroll-btn * {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+html.light .search-input-box {
+  background: #FFFFFF !important;
+  border-color: rgba(139, 92, 246, 0.2) !important;
+  color: #0F172A !important;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.06) !important;
+}
+
 html.light .faq-card-open,
 html.light .bg-\[\#0E2440\] {
   background: #FFFFFF !important;
@@ -243,7 +386,7 @@ html.light .text-slate-400 {
   color: #64748B !important;
 }
 
-/* ACCENT Remapping: Convert all yellowish text to purple (#8B5CF6 / #7C3AED) */
+/* ACCENT Remapping */
 html.light .gold-gradient-text {
   background: linear-gradient(135deg, #7C3AED 0%, #8B5CF6 60%, #A855F7 100%) !important;
   -webkit-background-clip: text !important;
@@ -347,3 +490,126 @@ html.light .bg-\[\#F59E0B\] span {
 html {
   transition: filter 0.3s ease-in-out;
 }
+
+/* ==========================================
+   LIGHT MODE MODALS & DIALOGS THEMING FIX
+   ========================================== */
+
+/* 1. Modal Overlay Backdrop */
+html.light .fixed.inset-0.bg-black\/80,
+html.light .fixed.inset-0.bg-black\/75 {
+  background-color: rgba(15, 23, 42, 0.45) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+/* 2. Modal Card Body & Containers */
+html.light .fixed.inset-0 .bg-gradient-to-b,
+html.light .fixed.inset-0 .bg-\[\#0E2038\],
+html.light .fixed.inset-0 .bg-\[\#0D2038\] {
+  background: #FFFFFF !important;
+  background-image: linear-gradient(to bottom, #FFFFFF, #F8FAFC) !important;
+  border-color: rgba(139, 92, 246, 0.25) !important;
+  box-shadow: 0 25px 60px -15px rgba(139, 92, 246, 0.25), 0 0 30px rgba(139, 92, 246, 0.1) !important;
+}
+
+/* 3. Modal Header Title & Text */
+html.light .fixed.inset-0 h3,
+html.light .fixed.inset-0 h4,
+html.light .fixed.inset-0 .text-white {
+  color: #0F172A !important;
+}
+
+html.light .fixed.inset-0 label,
+html.light .fixed.inset-0 .text-slate-300,
+html.light .fixed.inset-0 .text-slate-400 {
+  color: #334155 !important;
+  font-weight: 600 !important;
+}
+
+/* 4. Modal Header Accent Glow Line */
+html.light .fixed.inset-0 .bg-gradient-to-r.from-transparent.via-\[\#F59E0B\] {
+  background: linear-gradient(to right, transparent, #8B5CF6, transparent) !important;
+}
+
+/* 5. Modal Form Controls (Inputs, Selects, Textareas) */
+html.light .fixed.inset-0 input,
+html.light .fixed.inset-0 select,
+html.light .fixed.inset-0 textarea,
+html.light .fixed.inset-0 .bg-\[\#061426\],
+html.light .fixed.inset-0 .bg-\[\#07182E\] {
+  background-color: #F1F5F9 !important;
+  border-color: rgba(139, 92, 246, 0.25) !important;
+  color: #0F172A !important;
+  font-weight: 600 !important;
+}
+
+html.light .fixed.inset-0 input::placeholder,
+html.light .fixed.inset-0 textarea::placeholder {
+  color: #94A3B8 !important;
+}
+
+html.light .fixed.inset-0 input:focus,
+html.light .fixed.inset-0 select:focus,
+html.light .fixed.inset-0 textarea:focus {
+  border-color: #8B5CF6 !important;
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2) !important;
+  background-color: #FFFFFF !important;
+}
+
+html.light .fixed.inset-0 select option {
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+}
+
+/* 6. Modal Lock / Privacy Security Notice Banner */
+html.light .fixed.inset-0 .bg-\[\#F59E0B\]\/10,
+html.light .fixed.inset-0 .bg-amber-500\/10 {
+  background-color: rgba(139, 92, 246, 0.08) !important;
+  border-color: rgba(139, 92, 246, 0.3) !important;
+  color: #6D28D9 !important;
+}
+
+html.light .fixed.inset-0 .bg-\[\#F59E0B\]\/10 span,
+html.light .fixed.inset-0 .bg-amber-500\/10 span {
+  color: #6D28D9 !important;
+}
+
+/* 7. Modal Buttons */
+html.light .fixed.inset-0 button.bg-white\/5 {
+  background-color: #E2E8F0 !important;
+  color: #334155 !important;
+  border-color: rgba(148, 163, 184, 0.3) !important;
+}
+
+html.light .fixed.inset-0 button.bg-white\/5:hover {
+  background-color: #CBD5E1 !important;
+  color: #0F172A !important;
+}
+
+html.light .fixed.inset-0 button[type="submit"],
+html.light .fixed.inset-0 .bg-gradient-to-r.from-\[\#F59E0B\] {
+  background: linear-gradient(135deg, #8B5CF6 0%, #F97316 100%) !important;
+  color: #FFFFFF !important;
+  font-weight: 800 !important;
+  box-shadow: 0 8px 20px -4px rgba(139, 92, 246, 0.4) !important;
+}
+
+html.light .fixed.inset-0 button[type="submit"] span,
+html.light .fixed.inset-0 .bg-gradient-to-r.from-\[\#F59E0B\] span {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+/* 8. Close Button */
+html.light .fixed.inset-0 button.rounded-full {
+  background-color: #F1F5F9 !important;
+  color: #64748B !important;
+  border-color: rgba(148, 163, 184, 0.25) !important;
+}
+
+html.light .fixed.inset-0 button.rounded-full:hover {
+  background-color: #E2E8F0 !important;
+  color: #0F172A !important;
+}
+

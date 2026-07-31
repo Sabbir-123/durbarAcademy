@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { motion } from "framer-motion";
 import { Users, LayoutGrid, HelpCircle, AlertTriangle } from "lucide-react";
 
 export default function StudentChallenge() {
@@ -13,6 +14,7 @@ export default function StudentChallenge() {
       description:
         "বড় ব্যাচে ব্যক্তিগত দুর্বলতা, অগ্রগতি এবং শেখার ঘাটতি অনেক সময় নজরের বাইরে থেকে যায়।",
       badgeText: "সমস্যা ০১",
+      direction: "left" as const,
     },
     {
       id: "c2",
@@ -22,6 +24,7 @@ export default function StudentChallenge() {
       description:
         "প্রত্যেক শিক্ষার্থীর শক্তি ও দুর্বলতা আলাদা। তাই প্রস্তুতির কৌশলও হওয়া উচিত ব্যক্তিকেন্দ্রিক।",
       badgeText: "সমস্যা ০২",
+      direction: "bottom" as const,
     },
     {
       id: "c3",
@@ -31,6 +34,7 @@ export default function StudentChallenge() {
       description:
         "পরিকল্পনাহীন প্রস্তুতি সময় নষ্ট করে। সঠিক মেন্টরশিপ আপনার প্রস্তুতিকে আরও কার্যকর করে।",
       badgeText: "সমস্যা ০৩",
+      direction: "right" as const,
     },
   ];
 
@@ -41,9 +45,14 @@ export default function StudentChallenge() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         
-        {/* Top Centered Section Header */}
-        <div className="text-center max-w-3xl mx-auto space-y-4 mb-16">
-          
+        {/* Top Centered Section Header (From Top) */}
+        <motion.div
+          initial={{ opacity: 0, y: -50 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: false, amount: 0.2 }}
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          className="text-center max-w-3xl mx-auto space-y-4 mb-16"
+        >
           {/* Eyebrow with decorative small red square badges */}
           <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-black tracking-widest uppercase">
             <span className="w-1.5 h-1.5 bg-red-500 rounded-[2px]" />
@@ -56,21 +65,36 @@ export default function StudentChallenge() {
             প্রচলিত প্রস্তুতির যে ভুলগুলো{" "}
             <span className="text-red-400 block mt-1">আপনার স্বপ্নকে পিছিয়ে দেয়</span>
           </h2>
-        </div>
+        </motion.div>
 
-        {/* 3 Equal Cards Grid */}
+        {/* 3 Equal Cards Grid with Directional Entrance */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {challenges.map((item) => {
+          {challenges.map((item, idx) => {
             const Icon = item.icon;
 
+            const initialPos =
+              item.direction === "left"
+                ? { opacity: 0, x: -60 }
+                : item.direction === "right"
+                ? { opacity: 0, x: 60 }
+                : { opacity: 0, y: 60 };
+
             return (
-              <div
+              <motion.div
                 key={item.id}
-                className="bg-[#0D2038] hover:bg-[#122744] border border-white/10 hover:border-red-500/40 rounded-3xl p-5 sm:p-6 transition-all duration-300 shadow-xl group hover:-translate-y-2 flex flex-col justify-between"
+                initial={initialPos}
+                whileInView={{ opacity: 1, x: 0, y: 0 }}
+                viewport={{ once: false, amount: 0.2 }}
+                transition={{
+                  duration: 0.7,
+                  delay: idx * 0.15,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+                whileHover={{ y: -8, scale: 1.02 }}
+                className="bg-[#0D2038] hover:bg-[#122744] border border-white/10 hover:border-red-500/40 rounded-3xl p-5 sm:p-6 transition-all duration-300 shadow-xl group flex flex-col justify-between"
               >
                 <div className="space-y-5">
-                  
-                  {/* Large 16:10 Image Container with Red Icon Badge Overlay */}
+                  {/* Large 16:10 Image Container */}
                   <div className="relative aspect-[16/10] rounded-2xl overflow-hidden border border-white/10 bg-[#07182E]">
                     <Image
                       src={item.image}
@@ -99,7 +123,6 @@ export default function StudentChallenge() {
                   <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-normal">
                     {item.description}
                   </p>
-
                 </div>
 
                 {/* Bottom Red Accent Indicator */}
@@ -109,7 +132,7 @@ export default function StudentChallenge() {
                     <span>প্রচলিত ধারার সীমাবদ্ধতা</span>
                   </span>
                 </div>
-              </div>
+              </motion.div>
             );
           })}
         </div>

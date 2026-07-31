@@ -3,46 +3,244 @@
 import { useState, useEffect } from "react";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import { createClient } from "@/utils/supabase/client";
-import { Users, ShieldCheck, ListFilter, Trash2, Edit, Save, BookOpen, AlertTriangle, Plus, Check } from "lucide-react";
+import { Course } from "@/data/courses";
+import {
+  getStoredCourses,
+  saveCourse,
+  deleteCourseStore,
+  subscribeCoursesStore,
+} from "@/utils/courseStore";
+import { StudentSuccess } from "@/data/testimonials";
+import {
+  getStoredSuccessStories,
+  saveSuccessStory,
+  deleteSuccessStory,
+  subscribeSuccessStoriesStore,
+} from "@/utils/successStoryStore";
+import {
+  getStoredAuditLogs,
+  logAuditAction,
+  AuditLogItem,
+} from "@/utils/auditLogger";
+import {
+  getStoredUsers,
+  saveUserStore,
+  updateUserRoleStore,
+  updateUserStore,
+  deleteUserStore,
+  subscribeUserStore,
+  isSuperAdminEmail,
+} from "@/utils/userStore";
+import {
+  Users,
+  ShieldCheck,
+  Trash2,
+  Edit,
+  BookOpen,
+  Plus,
+  Eye,
+  EyeOff,
+  X,
+  Trophy,
+  Search,
+  UserPlus,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Copy,
+  Check,
+  RefreshCw,
+  Lock,
+  Key,
+  GraduationCap,
+  TrendingUp,
+  Wallet,
+  PieChart,
+  Receipt,
+  PlusCircle,
+  Coins,
+  LayoutDashboard,
+  ArrowRight,
+  UserCheck,
+} from "lucide-react";
 
 export default function AdminDashboard() {
   const [profile, setProfile] = useState<any>(null);
   const [usersList, setUsersList] = useState<any[]>([]);
-  const [auditLogs, setAuditLogs] = useState<any[]>([]);
-  const [courses, setCourses] = useState<any[]>([]);
-  const [branches, setBranches] = useState<any[]>([]);
-  const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<"users" | "courses" | "branches" | "payments" | "cms" | "audit">("users");
+  const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [successStories, setSuccessStories] = useState<StudentSuccess[]>([]);
+  const [activeTab, setActiveTab] = useState<
+    "dashboard" | "users" | "courses" | "stories" | "finance" | "audit"
+  >("dashboard");
 
-  // CMS editor states
-  const [cmsValue, setCmsValue] = useState("প্রচলিত প্রস্তুতির যে ভুলগুলো আপনার স্বপ্নকে পিছিয়ে দেয়");
+  // User Filter & Search State
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [userSearchQuery, setUserSearchQuery] = useState<string>("");
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState<boolean>(false);
 
-  // Course management states
-  const [courseTitle, setCourseTitle] = useState("");
-  const [coursePrice, setCoursePrice] = useState("");
-  const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
-  const [editingCourseTitle, setEditingCourseTitle] = useState("");
-  const [editingCoursePrice, setEditingCoursePrice] = useState("");
+  // User Edit Modal State
+  const [editingUser, setEditingUser] = useState<any | null>(null);
 
-  // Branch management states
-  const [branchName, setBranchName] = useState("");
-  const [branchLabel, setBranchLabel] = useState("");
-  const [editingBranchId, setEditingBranchId] = useState<string | null>(null);
-  const [editingBranchName, setEditingBranchName] = useState("");
-  const [editingBranchLabel, setEditingBranchLabel] = useState("");
+  // Auto Password Generator State
+  const [generatedPassword, setGeneratedPassword] = useState<string>("");
+  const [showGeneratedPassword, setShowGeneratedPassword] = useState<boolean>(false);
+  const [passwordCopied, setPasswordCopied] = useState<boolean>(false);
 
-  // Payment method management states
-  const [pmName, setPmName] = useState("");
-  const [pmLabel, setPmLabel] = useState("");
-  const [editingPmId, setEditingPmId] = useState<string | null>(null);
-  const [editingPmName, setEditingPmName] = useState("");
-  const [editingPmLabel, setEditingPmLabel] = useState("");
+  // Granular Permission Access Controls for New Admin
+  const [adminPermissions, setAdminPermissions] = useState({
+    courses: true,
+    stories: true,
+    users: true,
+    audit: true,
+  });
+
+  // Expense & Salary Ledger State (Initially Empty for Initial Launch)
+  const [expenseLedger, setExpenseLedger] = useState<any[]>([]);
+
+  const [ledgerSearch, setLedgerSearch] = useState("");
+  const [isAddExpenseModalOpen, setIsAddExpenseModalOpen] = useState(false);
+  const [newExpense, setNewExpense] = useState({
+    recipient: "",
+    role: "শিক্ষক/মেন্টর",
+    purpose: "",
+    amount: "",
+  });
+
+  // Dynamic Finance Calculations
+  const totalExpense = expenseLedger.reduce(
+    (sum, item) => sum + (Number(item.amount) || 0),
+    0
+  );
+  const totalSalaryGiven = expenseLedger
+    .filter(
+      (item) =>
+        item.role.includes("শিক্ষক") ||
+        item.role.includes("অ্যাডমিন") ||
+        item.role.includes("একাউন্ট্যান্ট")
+    )
+    .reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  const totalSales = expenseLedger
+    .filter(
+      (item) =>
+        item.role.includes("ইনকাম") || item.role.includes("সেলস")
+    )
+    .reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+
+  // User Role Statistics
+  const adminCount = usersList.filter((u) => u.role.toLowerCase().includes("admin")).length;
+  const teacherCount = usersList.filter((u) => u.role.toLowerCase() === "teacher").length;
+  const accountantCount = usersList.filter((u) => u.role.toLowerCase() === "accountant").length;
+  const studentCount = usersList.filter((u) => u.role.toLowerCase() === "student").length;
+
+  // Audit Log Pagination State (15 logs per page)
+  const [auditCurrentPage, setAuditCurrentPage] = useState<number>(1);
+  const logsPerPage = 15;
+
+  // New User / Admin Form State (Only Admin, Teacher, Accountant)
+  const [newUser, setNewUser] = useState({
+    full_name: "",
+    email: "",
+    role: "admin",
+  });
+
+  // Helper function to generate an 8-character secure password
+  const generate8CharPassword = () => {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%&*";
+    let pass = "";
+    for (let i = 0; i < 8; i++) {
+      pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setGeneratedPassword(pass);
+    setPasswordCopied(false);
+  };
+
+  const handleCopyPassword = () => {
+    if (!generatedPassword) return;
+    navigator.clipboard.writeText(generatedPassword);
+    setPasswordCopied(true);
+    setTimeout(() => setPasswordCopied(false), 2500);
+  };
+
+  // New Course Form State
+  const [newCourse, setNewCourse] = useState<Partial<Course>>({
+    category: "defense",
+    categoryLabel: "ডিফেন্স ও মিলিটারি",
+    title: "",
+    tagline: "",
+    batchBadge: "",
+    discountBadge: "",
+    price: 8500,
+    originalPrice: 12000,
+    seatsRemaining: 20,
+    totalSeats: 100,
+    startDate: "১৫ আগস্ট, ২০২৬",
+    duration: "৪ মাস",
+    imageUrl: "",
+    videoUrl: "",
+    detailLayout: "standard",
+    description: "",
+    features: [],
+    instructors: [],
+  });
+
+  const [featuresInput, setFeaturesInput] = useState("");
+  const [instructorsInput, setInstructorsInput] = useState("");
+
+  // Edit Course Modal State
+  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
+  const [editFeaturesInput, setEditFeaturesInput] = useState("");
+  const [editInstructorsInput, setEditInstructorsInput] = useState("");
+
+  // New Success Story State
+  const [newStory, setNewStory] = useState<Partial<StudentSuccess>>({
+    name: "",
+    rank: "মেধা স্থান: ০১",
+    institution: "বাংলাদেশ বিমান বাহিনী (BAFA)",
+    category: "bafa",
+    program: "BAFA Officer Cadet Course",
+    hscCollege: "নটর ডেম কলেজ, ঢাকা",
+    quote: "",
+    score: "মার্কস: ১৮৫/২০০",
+    badgeColor: "gold",
+    imageUrl: "",
+  });
+
+  // Edit Success Story Modal State
+  const [editingStory, setEditingStory] = useState<StudentSuccess | null>(null);
 
   const supabase = createClient();
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const hash = window.location.hash.replace("#", "");
+      if (["dashboard", "users", "courses", "stories", "finance", "audit"].includes(hash)) {
+        setActiveTab(hash as any);
+      }
+    }
+
+    // Sync local stored users, courses, success stories, and 30-day purged audit logs
+    setUsersList(getStoredUsers());
+    const unsubUsers = subscribeUserStore(() => {
+      setUsersList(getStoredUsers());
+    });
+
+    setCourses(getStoredCourses());
+    const unsubCourses = subscribeCoursesStore(() => {
+      setCourses(getStoredCourses());
+    });
+
+    setSuccessStories(getStoredSuccessStories());
+    const unsubStories = subscribeSuccessStoriesStore(() => {
+      setSuccessStories(getStoredSuccessStories());
+    });
+
+    setAuditLogs(getStoredAuditLogs());
+
     async function loadData() {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
 
       const { data: prof } = await supabase
@@ -52,1036 +250,2195 @@ export default function AdminDashboard() {
         .single();
       setProfile(prof);
 
-      // Fetch users from profiles & user_roles
-      const { data: dbUsers } = await supabase
-        .from("profiles")
-        .select(`
+      // Fetch users
+      const { data: dbUsers } = await supabase.from("profiles").select(`
           id,
           full_name,
           email,
           user_roles (role)
         `);
       if (dbUsers && dbUsers.length > 0) {
-        setUsersList(dbUsers.map(u => ({
-          id: u.id,
-          full_name: u.full_name || u.email,
-          email: u.email,
-          role: (u as any).user_roles?.role || "student"
-        })));
-      } else {
-        setUsersList([
-          { id: "u1", full_name: "সাকিব আহমেদ", email: "sakib@durbar.com", role: "student" },
-          { id: "u2", full_name: "ড. সাজ্জাদ হোসেন", email: "sajjad@durbar.com", role: "teacher" },
-          { id: "u3", full_name: "রকিবুল ইসলাম", email: "rokibul@durbar.com", role: "accountant" },
-          { id: "u4", full_name: "আহমেদ সাব্বির", email: "ahmedsabbir2013@gmail.com", role: "admin" },
-        ]);
-      }
-
-      // Fetch audit logs
-      const { data: dbAudit } = await supabase
-        .from("audit_logs")
-        .select("*")
-        .order("timestamp", { ascending: false })
-        .limit(15);
-      if (dbAudit && dbAudit.length > 0) {
-        setAuditLogs(dbAudit.map(log => ({
-          id: log.id,
-          timestamp: new Date(log.timestamp).toLocaleString("bn-BD"),
-          actor: log.actor_user_id || "System",
-          role: log.actor_role || "system",
-          action: log.action,
-          details: log.after_state ? JSON.stringify(log.after_state) : log.action
-        })));
-      } else {
-        setAuditLogs([
-          { id: "aud1", timestamp: "আজ, ১২:৩০", actor: "ahmedsabbir2013@gmail.com", role: "admin", action: "PROMOTE_USER", details: "Promoted sakib@durbar.com to teacher" },
-          { id: "aud2", timestamp: "আজ, ১১:১৫", actor: "sajjad@durbar.com", role: "teacher", action: "CREATE_LESSON", details: "Added lecture Concept Limit" },
-          { id: "aud3", timestamp: "গতকাল, ১৪:০০", actor: "rokibul@durbar.com", role: "accountant", action: "APPROVE_EXPENSE", details: "Approved requisition e1 (৳১৫০০)" },
-        ]);
-      }
-
-      // Fetch courses
-      const { data: dbCourses } = await supabase
-        .from("courses")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (dbCourses && dbCourses.length > 0) {
-        setCourses(dbCourses);
-      } else {
-        setCourses([
-          { id: "c1", title: "বুয়েট ও সিকেআরইউইটি স্পেশাল অ্যাডমিশন ২০২৬", price: 9500 },
-          { id: "c2", title: "ডিএমসি মেডিকেল ভর্তি প্রিপারেশন মাস্টারক্লাস", price: 8900 },
-        ]);
-      }
-
-      // Fetch branches
-      const { data: dbBranches } = await supabase
-        .from("admission_branches")
-        .select("*")
-        .order("created_at", { ascending: true });
-      if (dbBranches && dbBranches.length > 0) {
-        setBranches(dbBranches);
-      } else {
-        setBranches([
-          { id: "b1", name: "online", label: "অনলাইন" },
-          { id: "b2", name: "dhaka", label: "ঢাকা শাখা" },
-          { id: "b3", name: "chattogram", label: "চট্টগ্রাম শাখা" },
-          { id: "b4", name: "rajshahi", label: "রাজশাহী শাখা" },
-        ]);
-      }
-
-      // Fetch payment methods
-      const { data: dbPayments } = await supabase
-        .from("admission_payment_methods")
-        .select("*")
-        .order("created_at", { ascending: true });
-      if (dbPayments && dbPayments.length > 0) {
-        setPaymentMethods(dbPayments);
-      } else {
-        setPaymentMethods([
-          { id: "pm1", name: "bkash", label: "bKash (বিকাশ)" },
-          { id: "pm2", name: "nagad", label: "Nagad (নগদ)" },
-          { id: "pm3", name: "card", label: "কার্ড / ব্যাংক" },
-        ]);
+        dbUsers.forEach((u) => {
+          saveUserStore({
+            id: u.id,
+            full_name: u.full_name || u.email,
+            email: u.email,
+            role: (u as any).user_roles?.role || "student",
+          });
+        });
+        setUsersList(getStoredUsers());
       }
     }
     loadData();
+
+    return () => {
+      unsubUsers();
+      unsubCourses();
+      unsubStories();
+    };
   }, []);
 
-  const handleRoleReassignment = async (userId: string, newRole: string) => {
+  // USER CRUD: ROLE REASSIGNMENT WITH AUTOMATIC SEQUENTIAL ADMIN COUNTER (Admin 2, Admin 3, Admin 4...)
+  const handleRoleReassignment = async (userId: string, newRoleInput: string) => {
+    const targetUser = usersList.find((u) => u.id === userId);
+    if (targetUser && (targetUser.role.toLowerCase() === "super admin" || isSuperAdminEmail(targetUser.email))) {
+      alert("Super Admin (ahmedsabbir2013@gmail.com) অ্যাকাউন্টের রোল পরিবর্তন করা সম্ভব নয়।");
+      return;
+    }
+    const targetName = targetUser ? targetUser.full_name : userId;
+
+    let finalRole = newRoleInput;
+
+    if (newRoleInput.toLowerCase().includes("admin")) {
+      const existingAdminsCount = usersList.filter(
+        (u) => u.role.toLowerCase().includes("admin") && u.id !== userId
+      ).length;
+      finalRole = existingAdminsCount === 0 ? "Super Admin" : `Admin ${existingAdminsCount + 1}`;
+    }
+
     try {
       const { error } = await supabase
         .from("user_roles")
-        .upsert({ user_id: userId, role: newRole });
+        .upsert({ user_id: userId, role: finalRole });
 
-      if (error) throw error;
+      if (error) console.log("Supabase update error (fallback active):", error);
 
-      alert(`ইউজারের রোল পরিবর্তন করে ${newRole} করা হয়েছে।`);
-      setUsersList((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
+      await logAuditAction(
+        "ইউজার রোল প্রমোশন/পরিবর্তন",
+        `ইউজার ${targetName}-এর রোল পরিবর্তন করে ${finalRole} করা হয়েছে।`
       );
+      setAuditLogs(getStoredAuditLogs());
 
-      // Append to audit logs
-      await supabase.from("audit_logs").insert({
-        actor_user_id: profile?.id,
-        actor_role: "admin",
-        action: "PROMOTE_USER",
-        entity_type: "user_roles",
-        entity_id: userId,
-        after_state: { role: newRole }
-      });
-
-      setAuditLogs((prev) => [
-        {
-          id: Date.now().toString(),
-          timestamp: "এখন",
-          actor: profile?.email || "admin",
-          role: "admin",
-          action: "PROMOTE_USER",
-          details: `Reassigned role of ${userId} to ${newRole}`,
-        },
-        ...prev,
-      ]);
+      alert(`ইউজারের রোল পরিবর্তন করে ${finalRole} করা হয়েছে।`);
+      updateUserRoleStore(userId, finalRole);
+      setUsersList(getStoredUsers());
     } catch (err: any) {
       console.error(err);
-      alert("রোল পরিবর্তন করতে ব্যর্থ: " + err.message);
+      alert("রোল পরিবর্তন করতে সমস্যা: " + err.message);
     }
   };
 
-  // Course handlers
-  const handleAddCourse = async (e: React.FormEvent) => {
+  // USER CRUD: CREATE NEW USER / ADMIN / TEACHER / ACCOUNTANT
+  const handleCreateUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!courseTitle || !coursePrice) return;
+    if (!newUser.full_name || !newUser.email) {
+      alert("অনুগ্রহ করে ইউজারের নাম ও ইমেল ঠিকানা প্রদান করুন।");
+      return;
+    }
 
-    const price = parseFloat(coursePrice);
-    const slug = courseTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + "-" + Math.random().toString(36).substr(2, 5);
+    if (newUser.role === "student") {
+      alert("শিক্ষার্থীদের অ্যাকাউন্ট সুপার অ্যাডমিন প্যানেল থেকে তৈরি করা যাবে না। শিক্ষার্থীরা সাধারণ রেজিস্ট্রেশন পেজ (/signup) থেকে অ্যাকাউন্ট তৈরি করবে।");
+      return;
+    }
+
+    if (!generatedPassword) {
+      alert("অনুগ্রহ করে 'পাসওয়ার্ড জেনারেট করুন' বোতাম চেপে ৮ অক্ষরের পাসওয়ার্ড তৈরি করুন।");
+      return;
+    }
+
+    let assignedRole = newUser.role;
+
+    if (newUser.role === "admin") {
+      const existingAdminsCount = usersList.filter((u) =>
+        u.role.toLowerCase().includes("admin")
+      ).length;
+      assignedRole = existingAdminsCount === 0 ? "Super Admin" : `Admin ${existingAdminsCount + 1}`;
+    }
+
+    const created = {
+      id: "u-" + Date.now(),
+      full_name: newUser.full_name,
+      email: newUser.email,
+      role: assignedRole,
+      permissions: assignedRole.toLowerCase().includes("admin") ? adminPermissions : undefined,
+      temp_password: generatedPassword,
+    };
+
+    saveUserStore(created);
+    setUsersList(getStoredUsers());
+
+    await logAuditAction(
+      "নতুন ইউজার অ্যাকাউন্ট তৈরি (Create)",
+      `নতুন ${assignedRole} "${newUser.full_name}" (${newUser.email}) অ্যাকাউন্ট পারমিশনসহ তৈরি করা হয়েছে।`
+    );
+    setAuditLogs(getStoredAuditLogs());
 
     try {
-      const { data, error } = await supabase
-        .from("courses")
-        .insert({
-          title: courseTitle,
-          price,
-          slug,
-          is_published: true
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      setCourses((prev) => [data, ...prev]);
-
-      // Log Audit Event
-      await supabase.from("audit_logs").insert({
-        actor_user_id: profile?.id,
-        actor_role: "admin",
-        action: "CREATE_COURSE",
-        entity_type: "courses",
-        entity_id: data.id,
-        after_state: { title: courseTitle, price }
+      const { data: authData } = await supabase.auth.signUp({
+        email: newUser.email.trim().toLowerCase(),
+        password: generatedPassword,
+        options: {
+          data: {
+            full_name: newUser.full_name,
+          },
+        },
       });
 
-      setAuditLogs((prev) => [
-        {
-          id: Date.now().toString(),
-          timestamp: "এখন",
-          actor: profile?.email || "admin",
-          role: "admin",
-          action: "CREATE_COURSE",
-          details: `Created new course: ${courseTitle}`,
-        },
-        ...prev,
-      ]);
+      const userId = authData?.user?.id || created.id;
+      created.id = userId;
+      saveUserStore(created);
 
-      setCourseTitle("");
-      setCoursePrice("");
-    } catch (err: any) {
-      console.error(err);
-      alert("কোর্স যোগ করতে সমস্যা হয়েছে: " + err.message);
+      await supabase.from("profiles").upsert([
+        { id: userId, full_name: created.full_name, email: created.email },
+      ]);
+      await supabase.from("user_roles").upsert([
+        { user_id: userId, role: created.role },
+      ]);
+    } catch (err) {
+      console.log("Supabase insert/auth sync fallback:", err);
+    }
+
+    alert(`নতুন ${assignedRole} "${newUser.full_name}" সফলভাবে তৈরি করা হয়েছে!\nজেনারেটেড পাসওয়ার্ড: ${generatedPassword}`);
+    setNewUser({ full_name: "", email: "", role: "admin" });
+    setGeneratedPassword("");
+    setPasswordCopied(false);
+    setIsAddUserModalOpen(false);
+  };
+
+  // USER CRUD: EDIT USER DETAILS
+  const handleOpenEditUserModal = (u: any) => {
+    if (u.role.toLowerCase() === "super admin" || isSuperAdminEmail(u.email)) {
+      alert("Super Admin (ahmedsabbir2013@gmail.com) অ্যাকাউন্ট সম্পাদনা করা সম্ভব নয় (Protected Master Account)।");
+      return;
+    }
+    setEditingUser({ ...u, password: u.password || u.temp_password || "" });
+    if (u.permissions) {
+      setAdminPermissions({ ...u.permissions });
     }
   };
 
-  const handleUpdateCourse = async (courseId: string) => {
-    if (!editingCourseTitle || !editingCoursePrice) return;
-    const price = parseFloat(editingCoursePrice);
+  const handleUpdateUserSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
 
     try {
-      const { data, error } = await supabase
-        .from("courses")
-        .update({
-          title: editingCourseTitle,
-          price
-        })
-        .eq("id", courseId)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      setCourses((prev) => prev.map((c) => (c.id === courseId ? data : c)));
-      setEditingCourseId(null);
-
-      // Log Audit Event
-      await supabase.from("audit_logs").insert({
-        actor_user_id: profile?.id,
-        actor_role: "admin",
-        action: "UPDATE_COURSE",
-        entity_type: "courses",
-        entity_id: courseId,
-        after_state: { title: editingCourseTitle, price }
+      updateUserStore(editingUser.id, {
+        full_name: editingUser.full_name,
+        email: editingUser.email,
+        role: editingUser.role,
+        password: editingUser.password,
+        permissions: editingUser.role.toLowerCase().includes("admin") ? adminPermissions : undefined,
       });
 
-      alert("কোর্স সফলভাবে আপডেট করা হয়েছে।");
+      await logAuditAction(
+        "ইউজার তথ্য সম্পাদনা (Update)",
+        `ইউজার "${editingUser.full_name}" (${editingUser.email})-এর তথ্য ও পাসওয়ার্ড আপডেট করা হয়েছে।`
+      );
+      setAuditLogs(getStoredAuditLogs());
+      setUsersList(getStoredUsers());
+
+      alert(`ইউজার "${editingUser.full_name}"-এর তথ্য সফলভাবে আপডেট করা হয়েছে!`);
+      setEditingUser(null);
     } catch (err: any) {
-      console.error(err);
+      alert("ইউজার আপডেট করতে ব্যর্থ: " + err.message);
+    }
+  };
+
+  // USER CRUD: DELETE USER
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    const targetUser = usersList.find((u) => u.id === userId);
+    if (targetUser && (targetUser.role.toLowerCase() === "super admin" || isSuperAdminEmail(targetUser.email))) {
+      alert("Super Admin (ahmedsabbir2013@gmail.com) অ্যাকাউন্ট সিস্টেম থেকে মুছে ফেলা সম্ভব নয় (Protected Master Account)।");
+      return;
+    }
+    if (!confirm(`আপনি কি নিশ্চিতভাবে ইউজার "${userName}" সিস্টেম থেকে সম্পূর্ণ ডিলিট করতে চান?`)) return;
+
+    try {
+      deleteUserStore(userId);
+      await logAuditAction(
+        "ইউজার ডিলিট করা (Delete)",
+        `ইউজার "${userName}" (ID: ${userId}) সফলভাবে ডিলিট করা হয়েছে।`
+      );
+      setAuditLogs(getStoredAuditLogs());
+      setUsersList(getStoredUsers());
+
+      alert(`ইউজার "${userName}" সফলভাবে ডিলিট করা হয়েছে।`);
+    } catch (err: any) {
+      alert("ডিলিট করতে ব্যর্থ: " + err.message);
+    }
+  };
+
+  // ADD NEW EXPENSE PAYOUT ENTRY
+  const handleAddExpenseSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newExpense.recipient || !newExpense.amount) {
+      alert("অনুগ্রহ করে প্রাপকের নাম ও অর্থ প্রদানের পরিমাণ উল্লেখ করুন।");
+      return;
+    }
+
+    const entry = {
+      id: "exp-" + Date.now(),
+      recipient: newExpense.recipient,
+      role: newExpense.role,
+      purpose: newExpense.purpose || "সম্মানী ও পরিচালনা ব্যয়",
+      amount: Number(newExpense.amount),
+      date: new Date().toLocaleDateString("bn-BD", { month: "long", day: "numeric", year: "numeric" }),
+      status: "পরিশোধিত",
+    };
+
+    setExpenseLedger((prev) => [entry, ...prev]);
+
+    await logAuditAction(
+      "নতুন আর্থিক এন্ট্রি",
+      `প্রাপক ${entry.recipient} (${entry.role})-কে ৳${entry.amount.toLocaleString("bn-BD")} পরিমাণের এন্ট্রি যুক্ত করা হয়েছে।`
+    );
+    setAuditLogs(getStoredAuditLogs());
+
+    alert(`আর্থিক এন্ট্রি সফলভাবে যুক্ত করা হয়েছে!`);
+    setNewExpense({ recipient: "", role: "শিক্ষক/মেন্টর", purpose: "", amount: "" });
+    setIsAddExpenseModalOpen(false);
+  };
+
+  // Filtered User List
+  const filteredUsers = usersList.filter((u) => {
+    const matchesRole =
+      roleFilter === "all"
+        ? true
+        : roleFilter === "admin"
+        ? u.role.toLowerCase().includes("admin")
+        : u.role.toLowerCase() === roleFilter.toLowerCase();
+
+    const matchesSearch =
+      u.full_name.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+      u.email.toLowerCase().includes(userSearchQuery.toLowerCase());
+    return matchesRole && matchesSearch;
+  });
+
+  // Filtered Expense Ledger
+  const filteredExpenses = expenseLedger.filter((e) =>
+    e.recipient.toLowerCase().includes(ledgerSearch.toLowerCase()) ||
+    e.purpose.toLowerCase().includes(ledgerSearch.toLowerCase()) ||
+    e.role.toLowerCase().includes(ledgerSearch.toLowerCase())
+  );
+
+  // COURSE CRUD HANDLERS WITH AUDIT LOGGING
+  const handleAddCourseSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCourse.title || newCourse.price === undefined) {
+      alert("অনুগ্রহ করে কোর্সের শিরোনাম এবং মূল্য প্রদান করুন।");
+      return;
+    }
+
+    const feats = featuresInput
+      .split("\n")
+      .map((f) => f.trim())
+      .filter(Boolean);
+    const insts = instructorsInput
+      .split(",")
+      .map((i) => i.trim())
+      .filter(Boolean);
+
+    try {
+      const saved = await saveCourse({
+        ...newCourse,
+        title: newCourse.title,
+        price: Number(newCourse.price),
+        categoryLabel: "ডিফেন্স ও মিলিটারি",
+        features: feats.length > 0 ? feats : ["লাইভ ও ওএমআর এক্সাম", "পিডিএফ নোটস"],
+        instructors: insts.length > 0 ? insts : ["অভিজ্ঞ মেন্টর প্যানেল"],
+      });
+
+      await logAuditAction(
+        "নতুন কোর্স তৈরি",
+        `নতুন কোর্স "${saved.title}" (ফি: ৳${saved.price}) সফলভাবে সিস্টেমে যুক্ত করা হয়েছে।`
+      );
+      setAuditLogs(getStoredAuditLogs());
+
+      alert(`কোর্স "${saved.title}" সফলভাবে যোগ করা হয়েছে!`);
+      setNewCourse({
+        category: "defense",
+        categoryLabel: "ডিফেন্স ও মিলিটারি",
+        title: "",
+        tagline: "",
+        batchBadge: "",
+        discountBadge: "",
+        price: 8500,
+        originalPrice: 12000,
+        seatsRemaining: 20,
+        totalSeats: 100,
+        startDate: "১৫ আগস্ট, ২০২৬",
+        duration: "৪ মাস",
+        imageUrl: "",
+        videoUrl: "",
+        detailLayout: "standard",
+        description: "",
+        features: [],
+        instructors: [],
+      });
+      setFeaturesInput("");
+      setInstructorsInput("");
+    } catch (err: any) {
+      alert("কোর্স তৈরি করতে সমস্যা হয়েছে: " + err.message);
+    }
+  };
+
+  const handleOpenEditCourseModal = (course: Course) => {
+    setEditingCourse({ ...course });
+    setEditFeaturesInput((course.features || []).join("\n"));
+    setEditInstructorsInput((course.instructors || []).join(", "));
+  };
+
+  const handleSaveEditedCourse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCourse) return;
+
+    const feats = editFeaturesInput
+      .split("\n")
+      .map((f) => f.trim())
+      .filter(Boolean);
+    const insts = editInstructorsInput
+      .split(",")
+      .map((i) => i.trim())
+      .filter(Boolean);
+
+    try {
+      const updated = await saveCourse({
+        ...editingCourse,
+        title: editingCourse.title,
+        price: Number(editingCourse.price),
+        categoryLabel: "ডিফেন্স ও মিলিটারি",
+        features: feats,
+        instructors: insts,
+      });
+
+      await logAuditAction(
+        "কোর্স সম্পাদনা (Update)",
+        `কোর্স "${updated.title}" তথ্য ও কারিকুলাম আপডেট করা হয়েছে।`
+      );
+      setAuditLogs(getStoredAuditLogs());
+
+      alert(`কোর্স "${updated.title}" আপডেট করা হয়েছে!`);
+      setEditingCourse(null);
+    } catch (err: any) {
       alert("কোর্স আপডেট করতে সমস্যা হয়েছে: " + err.message);
     }
   };
 
-  const handleDeleteCourse = async (courseId: string) => {
-    if (!confirm("আপনি কি নিশ্চিতভাবে এই কোর্সটি ডিলিট করতে চান?")) return;
+  const handleDeleteCourse = async (courseId: string, title: string) => {
+    if (!confirm(`আপনি কি নিশ্চিতভাবে "${title}" কোর্সটি ডিলিট করতে চান?`)) return;
 
     try {
-      const { error } = await supabase
-        .from("courses")
-        .delete()
-        .eq("id", courseId);
-
-      if (error) throw error;
-
-      setCourses((prev) => prev.filter((c) => c.id !== courseId));
-
-      // Log Audit Event
-      await supabase.from("audit_logs").insert({
-        actor_user_id: profile?.id,
-        actor_role: "admin",
-        action: "DELETE_COURSE",
-        entity_type: "courses",
-        entity_id: courseId
-      });
+      await deleteCourseStore(courseId);
+      await logAuditAction(
+        "কোর্স মুছে ফেলা (Delete)",
+        `কোর্স "${title}" (ID: ${courseId}) সিস্টেম থেকে মুছে ফেলা হয়েছে।`
+      );
+      setAuditLogs(getStoredAuditLogs());
 
       alert("কোর্সটি সফলভাবে ডিলিট করা হয়েছে।");
     } catch (err: any) {
-      console.error(err);
       alert("কোর্স ডিলিট করতে সমস্যা হয়েছে: " + err.message);
     }
   };
 
-  // Branch handlers
-  const handleAddBranch = async (e: React.FormEvent) => {
+  const handleToggleCoursePublish = async (course: Course) => {
+    try {
+      const updated = await saveCourse({
+        ...course,
+        title: course.title,
+        price: Number(course.price),
+        published: !course.published,
+      });
+
+      await logAuditAction(
+        "কোর্স পাবলিশ স্ট্যাটাস পরিবর্তন",
+        `কোর্স "${updated.title}"-এর স্ট্যাটাস ${
+          updated.published ? "পাবলিশড (দৃশ্যমান)" : "আনপাবলিশড (লুকানো)"
+        } করা হয়েছে।`
+      );
+      setAuditLogs(getStoredAuditLogs());
+
+      alert(
+        `কোর্সটি ${
+          updated.published ? "পাবলিশড (দৃশ্যমান)" : "আনপাবলিশড (লুকানো)"
+        } করা হয়েছে।`
+      );
+    } catch (err: any) {
+      console.error(err);
+    }
+  };
+
+  // SUCCESS STORY CRUD HANDLERS WITH AUDIT LOGGING
+  const handleAddStorySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!branchName || !branchLabel) return;
+    if (!newStory.name || !newStory.institution) {
+      alert("অনুগ্রহ করে কৃতি শিক্ষার্থীর নাম ও প্রতিষ্ঠানের নাম প্রদান করুন।");
+      return;
+    }
 
     try {
-      const { data, error } = await supabase
-        .from("admission_branches")
-        .insert({
-          name: branchName,
-          label: branchLabel
-        })
-        .select()
-        .single();
+      const saved = await saveSuccessStory(newStory);
+      await logAuditAction(
+        "সাকসেস স্টোরি যুক্ত",
+        `কৃতি শিক্ষার্থী "${saved.name}" (${saved.institution}) সাফল্য তথ্য যুক্ত করা হয়েছে।`
+      );
+      setAuditLogs(getStoredAuditLogs());
 
-      if (error) throw error;
-
-      setBranches((prev) => [...prev, data]);
-
-      // Log Audit Event
-      await supabase.from("audit_logs").insert({
-        actor_user_id: profile?.id,
-        actor_role: "admin",
-        action: "CREATE_BRANCH",
-        entity_type: "admission_branches",
-        entity_id: data.id,
-        after_state: { name: branchName, label: branchLabel }
+      alert(`সাকসেস স্টোরি "${saved.name}" সফলভাবে যুক্ত করা হয়েছে!`);
+      setNewStory({
+        name: "",
+        rank: "মেধা স্থান: ০১",
+        institution: "বাংলাদেশ বিমান বাহিনী (BAFA)",
+        category: "bafa",
+        program: "BAFA Officer Cadet Course",
+        hscCollege: "নটর ডেম কলেজ, ঢাকা",
+        quote: "",
+        score: "মার্কস: ১৮৫/২০০",
+        badgeColor: "gold",
+        imageUrl: "",
       });
-
-      setBranchName("");
-      setBranchLabel("");
     } catch (err: any) {
-      console.error(err);
-      alert("শাখা যোগ করতে সমস্যা হয়েছে: " + err.message);
+      alert("সাকসেস স্টোরি যুক্ত করতে ব্যর্থ: " + err.message);
     }
   };
 
-  const handleUpdateBranch = async (branchId: string) => {
-    if (!editingBranchName || !editingBranchLabel) return;
-
-    try {
-      const { data, error } = await supabase
-        .from("admission_branches")
-        .update({
-          name: editingBranchName,
-          label: editingBranchLabel
-        })
-        .eq("id", branchId)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      setBranches((prev) => prev.map((b) => (b.id === branchId ? data : b)));
-      setEditingBranchId(null);
-
-      // Log Audit Event
-      await supabase.from("audit_logs").insert({
-        actor_user_id: profile?.id,
-        actor_role: "admin",
-        action: "UPDATE_BRANCH",
-        entity_type: "admission_branches",
-        entity_id: branchId,
-        after_state: { name: editingBranchName, label: editingBranchLabel }
-      });
-
-      alert("শাখা সফলভাবে আপডেট করা হয়েছে।");
-    } catch (err: any) {
-      console.error(err);
-      alert("শাখা আপডেট করতে সমস্যা হয়েছে: " + err.message);
-    }
-  };
-
-  const handleDeleteBranch = async (branchId: string) => {
-    if (!confirm("আপনি কি নিশ্চিতভাবে এই শাখাটি ডিলিট করতে চান?")) return;
-
-    try {
-      const { error } = await supabase
-        .from("admission_branches")
-        .delete()
-        .eq("id", branchId);
-
-      if (error) throw error;
-
-      setBranches((prev) => prev.filter((b) => b.id !== branchId));
-
-      // Log Audit Event
-      await supabase.from("audit_logs").insert({
-        actor_user_id: profile?.id,
-        actor_role: "admin",
-        action: "DELETE_BRANCH",
-        entity_type: "admission_branches",
-        entity_id: branchId
-      });
-
-      alert("শাখা সফলভাবে ডিলিট করা হয়েছে।");
-    } catch (err: any) {
-      console.error(err);
-      alert("শাখা ডিলিট করতে সমস্যা হয়েছে: " + err.message);
-    }
-  };
-
-  // Payment Method handlers
-  const handleAddPaymentMethod = async (e: React.FormEvent) => {
+  const handleSaveEditedStory = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!pmName || !pmLabel) return;
+    if (!editingStory) return;
 
     try {
-      const { data, error } = await supabase
-        .from("admission_payment_methods")
-        .insert({
-          name: pmName,
-          label: pmLabel
-        })
-        .select()
-        .single();
+      await saveSuccessStory(editingStory);
+      await logAuditAction(
+        "সাকসেস স্টোরি সম্পাদনা",
+        `কৃতি শিক্ষার্থী "${editingStory.name}"-এর টেস্টামেন্ট এডিট করা হয়েছে।`
+      );
+      setAuditLogs(getStoredAuditLogs());
 
-      if (error) throw error;
-
-      setPaymentMethods((prev) => [...prev, data]);
-
-      // Log Audit Event
-      await supabase.from("audit_logs").insert({
-        actor_user_id: profile?.id,
-        actor_role: "admin",
-        action: "CREATE_PAYMENT_METHOD",
-        entity_type: "admission_payment_methods",
-        entity_id: data.id,
-        after_state: { name: pmName, label: pmLabel }
-      });
-
-      setPmName("");
-      setPmLabel("");
+      alert(`সাকসেস স্টোরি "${editingStory.name}" আপডেট করা হয়েছে!`);
+      setEditingStory(null);
     } catch (err: any) {
-      console.error(err);
-      alert("পেমেন্ট মেথড যোগ করতে সমস্যা হয়েছে: " + err.message);
+      alert("আপডেট করতে ব্যর্থ: " + err.message);
     }
   };
 
-  const handleUpdatePaymentMethod = async (pmId: string) => {
-    if (!editingPmName || !editingPmLabel) return;
+  const handleDeleteStory = async (id: string, name: string) => {
+    if (!confirm(`আপনি কি নিশ্চিতভাবে "${name}"-এর স্টোরিটি ডিলিট করতে চান?`)) return;
 
     try {
-      const { data, error } = await supabase
-        .from("admission_payment_methods")
-        .update({
-          name: editingPmName,
-          label: editingPmLabel
-        })
-        .eq("id", pmId)
-        .select()
-        .single();
+      await deleteSuccessStory(id);
+      await logAuditAction(
+        "সাকসেস স্টোরি মুছে ফেলা",
+        `কৃতি শিক্ষার্থী "${name}"-এর সাকসেস স্টোরি ডিলিট করা হয়েছে।`
+      );
+      setAuditLogs(getStoredAuditLogs());
 
-      if (error) throw error;
-
-      setPaymentMethods((prev) => prev.map((pm) => (pm.id === pmId ? data : pm)));
-      setEditingPmId(null);
-
-      // Log Audit Event
-      await supabase.from("audit_logs").insert({
-        actor_user_id: profile?.id,
-        actor_role: "admin",
-        action: "UPDATE_PAYMENT_METHOD",
-        entity_type: "admission_payment_methods",
-        entity_id: pmId,
-        after_state: { name: editingPmName, label: editingPmLabel }
-      });
-
-      alert("পেমেন্ট মেথড সফলভাবে আপডেট করা হয়েছে।");
+      alert("সাকসেস স্টোরিটি সফলভাবে ডিলিট করা হয়েছে।");
     } catch (err: any) {
-      console.error(err);
-      alert("পেমেন্ট মেথড আপডেট করতে সমস্যা হয়েছে: " + err.message);
+      alert("ডিলিট করতে ব্যর্থ: " + err.message);
     }
   };
 
-  const handleDeletePaymentMethod = async (pmId: string) => {
-    if (!confirm("আপনি কি নিশ্চিতভাবে এই পেমেন্ট মেথডটি ডিলিট করতে চান?")) return;
-
+  const handleToggleStoryPublish = async (story: StudentSuccess) => {
     try {
-      const { error } = await supabase
-        .from("admission_payment_methods")
-        .delete()
-        .eq("id", pmId);
-
-      if (error) throw error;
-
-      setPaymentMethods((prev) => prev.filter((pm) => pm.id !== pmId));
-
-      // Log Audit Event
-      await supabase.from("audit_logs").insert({
-        actor_user_id: profile?.id,
-        actor_role: "admin",
-        action: "DELETE_PAYMENT_METHOD",
-        entity_type: "admission_payment_methods",
-        entity_id: pmId
+      const updated = await saveSuccessStory({
+        ...story,
+        published: !story.published,
       });
+      await logAuditAction(
+        "স্টোরি পাবলিশ স্ট্যাটাস পরিবর্তন",
+        `সাকসেস স্টোরি "${story.name}" ${
+          updated.published ? "পাবলিশড (দৃশ্যমান)" : "আনপাবলিশড (লুকানো)"
+        } করা হয়েছে।`
+      );
+      setAuditLogs(getStoredAuditLogs());
 
-      alert("পেমেন্ট মেথড সফলভাবে ডিলিট করা হয়েছে।");
+      alert(
+        `স্টোরিটি ${
+          updated.published ? "পাবলিশড (দৃশ্যমান)" : "আনপাবলিশড (লুকানো)"
+        } করা হয়েছে।`
+      );
     } catch (err: any) {
       console.error(err);
-      alert("পেমেন্ট মেথড ডিলিট করতে সমস্যা হয়েছে: " + err.message);
     }
   };
 
-  const handleSaveCMS = () => {
-    alert("পাবলিক হোমপেজ কপি সফলভাবে আপডেট করা হয়েছে।");
-    setAuditLogs((prev) => [
-      {
-        id: Date.now().toString(),
-        timestamp: "এখন",
-        actor: profile?.email || "admin",
-        role: "admin",
-        action: "UPDATE_CMS",
-        details: "Updated homepage pain points main heading copy",
-      },
-      ...prev,
-    ]);
-  };
+  // AUDIT LOG PAGINATION LOGIC (15 LOGS PER PAGE)
+  const totalAuditPages = Math.ceil(auditLogs.length / logsPerPage) || 1;
+  const paginatedAuditLogs = auditLogs.slice(
+    (auditCurrentPage - 1) * logsPerPage,
+    auditCurrentPage * logsPerPage
+  );
 
   return (
     <div className="min-h-screen bg-[#07182E] text-white flex">
-      {/* Sidebar Navigation */}
-      <DashboardSidebar role="admin" activeTab="dashboard" />
+      <DashboardSidebar
+        role="admin"
+        activeTab={activeTab}
+        userName={profile?.full_name || "Ahmed Sabbir"}
+        onTabChange={(tab) => {
+          setActiveTab(tab as any);
+          setAuditCurrentPage(1);
+        }}
+      />
 
-      {/* Main Content Area */}
       <main className="flex-1 overflow-y-auto p-6 sm:p-8 lg:p-10 space-y-8">
-        
         {/* Top Welcomer */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
           <div className="space-y-1">
-            <span className="text-xs font-bold text-[#FACC15] uppercase tracking-wider block">
-              super admin center
-            </span>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
-              স্বাগতম, {profile?.full_name || "অ্যাডমিন"}!
+              সুপার অ্যাডমিন কন্ট্রোল সেন্টার
             </h1>
             <p className="text-xs text-slate-300">
-              ইউজার রোল প্রমোশন, কোর্স ও ভর্তি ফর্ম সেটিংস, সিএমএস কপি পরিবর্তন এবং অডিট ট্রেইল পর্যালোচনা।
+              ইউজার রোল প্রমোশন, ফাইনান্সিয়াল হিসাব, ডিফেন্স কোর্সসমূহ এবং সাকসেস স্টোরি সামগ্রিক সমাহার।
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setActiveTab("users")}
-              className={`px-4 py-2 text-xs font-bold rounded-xl transition-all ${
-                activeTab === "users" ? "bg-[#F59E0B] text-black" : "bg-white/5 border border-white/10 text-slate-300"
-              }`}
-            >
-              ইউজার রোল
-            </button>
-            <button
-              onClick={() => setActiveTab("courses")}
-              className={`px-4 py-2 text-xs font-bold rounded-xl transition-all ${
-                activeTab === "courses" ? "bg-[#F59E0B] text-black" : "bg-white/5 border border-white/10 text-slate-300"
-              }`}
-            >
-              কোর্সসমূহ
-            </button>
-            <button
-              onClick={() => setActiveTab("branches")}
-              className={`px-4 py-2 text-xs font-bold rounded-xl transition-all ${
-                activeTab === "branches" ? "bg-[#F59E0B] text-black" : "bg-white/5 border border-white/10 text-slate-300"
-              }`}
-            >
-              শাখা সমূহ
-            </button>
-            <button
-              onClick={() => setActiveTab("payments")}
-              className={`px-4 py-2 text-xs font-bold rounded-xl transition-all ${
-                activeTab === "payments" ? "bg-[#F59E0B] text-black" : "bg-white/5 border border-white/10 text-slate-300"
-              }`}
-            >
-              পেমেন্ট মেথড
-            </button>
-            <button
-              onClick={() => setActiveTab("cms")}
-              className={`px-4 py-2 text-xs font-bold rounded-xl transition-all ${
-                activeTab === "cms" ? "bg-[#F59E0B] text-black" : "bg-white/5 border border-white/10 text-slate-300"
-              }`}
-            >
-              সিএমএস কপি
-            </button>
-            <button
-              onClick={() => setActiveTab("audit")}
-              className={`px-4 py-2 text-xs font-bold rounded-xl transition-all ${
-                activeTab === "audit" ? "bg-[#F59E0B] text-black" : "bg-white/5 border border-white/10 text-slate-300"
-              }`}
-            >
-              অডিট লগ
-            </button>
+
+          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#0D2038] border border-white/10 text-xs font-bold text-[#F59E0B] shadow-inner">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>সিস্টেম লাইভ ড্যাশবোর্ড</span>
           </div>
         </div>
 
-        {activeTab === "users" && (
-          <section id="users" className="bg-[#0D2038] border border-white/10 rounded-3xl p-6 space-y-4">
-            <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <Users className="w-5 h-5 text-[#F59E0B]" />
-              <span>ইউজার রুল এবং রোল রিঅ্যাসাইনমেন্ট</span>
-            </h3>
+        {/* TAB: OVERVIEW DASHBOARD (SUMMARY OF EVERYTHING) */}
+        {activeTab === "dashboard" && (
+          <div className="space-y-8">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div>
+                <h2 className="text-xl font-black text-white flex items-center gap-2">
+                  <LayoutDashboard className="w-6 h-6 text-[#F59E0B]" />
+                  <span>সামগ্রিক ড্যাশবোর্ড সামারি (Overview of Everything)</span>
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  সিস্টেমের সকল ইউজার, ডিফেন্স কোর্স, কৃতি শিক্ষার্থী ও আর্থিক হিসাবের রিয়েল-টাইম সারসংক্ষেপ।
+                </p>
+              </div>
+            </div>
 
+            {/* 5 EXECUTIVE SUMMARY STAT CARDS */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div
+                onClick={() => setActiveTab("users")}
+                className="bg-[#0D2038] border border-white/10 p-5 rounded-3xl space-y-2 cursor-pointer hover:border-[#F59E0B]/40 transition-all shadow-md group"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-400">মোট ইউজার</span>
+                  <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20 group-hover:scale-110 transition-transform">
+                    <Users className="w-5 h-5" />
+                  </div>
+                </div>
+                <p className="text-2xl font-black text-white">{usersList.length} জন</p>
+                <span className="text-[10px] text-blue-400 font-bold block">
+                  {studentCount} শিক্ষার্থী • {teacherCount} শিক্ষক • {adminCount} অ্যাডমিন
+                </span>
+              </div>
+
+              <div
+                onClick={() => setActiveTab("courses")}
+                className="bg-[#0D2038] border border-white/10 p-5 rounded-3xl space-y-2 cursor-pointer hover:border-[#F59E0B]/40 transition-all shadow-md group"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-400">সক্রিয় কোর্সসমূহ</span>
+                  <div className="p-2 rounded-xl bg-[#F59E0B]/10 text-[#F59E0B] border border-[#F59E0B]/20 group-hover:scale-110 transition-transform">
+                    <BookOpen className="w-5 h-5" />
+                  </div>
+                </div>
+                <p className="text-2xl font-black text-[#F59E0B]">{courses.length}টি</p>
+                <span className="text-[10px] text-[#F59E0B] font-bold block">
+                  BAFA, BMA, BN ও ISSB কোর্স
+                </span>
+              </div>
+
+              <div
+                onClick={() => setActiveTab("stories")}
+                className="bg-[#0D2038] border border-white/10 p-5 rounded-3xl space-y-2 cursor-pointer hover:border-[#F59E0B]/40 transition-all shadow-md group"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-400">সাকসেস স্টোরি</span>
+                  <div className="p-2 rounded-xl bg-[#FACC15]/10 text-[#FACC15] border border-[#FACC15]/20 group-hover:scale-110 transition-transform">
+                    <Trophy className="w-5 h-5" />
+                  </div>
+                </div>
+                <p className="text-2xl font-black text-[#FACC15]">{successStories.length}টি</p>
+                <span className="text-[10px] text-[#FACC15] font-bold block">
+                  ১ম স্থান ও গ্রিন কার্ড সাফল্যসমূহ
+                </span>
+              </div>
+
+              <div
+                onClick={() => setActiveTab("finance")}
+                className="bg-[#0D2038] border border-white/10 p-5 rounded-3xl space-y-2 cursor-pointer hover:border-[#F59E0B]/40 transition-all shadow-md group"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-400">ফাইনান্সিয়াল স্থিতি</span>
+                  <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 group-hover:scale-110 transition-transform">
+                    <Coins className="w-5 h-5" />
+                  </div>
+                </div>
+                <p className="text-2xl font-black text-emerald-400">৳{totalSales.toLocaleString("bn-BD")}</p>
+                <span className="text-[10px] text-emerald-400 font-bold block">
+                  সর্বমোট ইনকাম ও সেলস ব্যালেন্স
+                </span>
+              </div>
+
+              <div
+                onClick={() => setActiveTab("audit")}
+                className="bg-[#0D2038] border border-white/10 p-5 rounded-3xl space-y-2 cursor-pointer hover:border-[#F59E0B]/40 transition-all shadow-md group"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-400">অডিট ট্রেইল লগ</span>
+                  <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 group-hover:scale-110 transition-transform">
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
+                </div>
+                <p className="text-2xl font-black text-purple-300">{auditLogs.length}টি</p>
+                <span className="text-[10px] text-purple-400 font-bold block">
+                  ৩০ দিনের সিকিউর ট্র্যাকিং লগস
+                </span>
+              </div>
+            </div>
+
+            {/* QUICK PREVIEWS & MANAGEMENT GRID */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              {/* Left Column: Recent Users & Recent Audit Activity */}
+              <div className="lg:col-span-7 space-y-6">
+                {/* Users Summary Widget */}
+                <div className="bg-[#0D2038] border border-white/10 rounded-3xl p-6 space-y-4">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                      <UserCheck className="w-4 h-4 text-[#F59E0B]" />
+                      <span>ইউজার রোল বন্টন ও সাম্প্রতিক তালিকা</span>
+                    </h3>
+                    <button
+                      onClick={() => setActiveTab("users")}
+                      className="text-xs text-[#F59E0B] font-bold hover:underline inline-flex items-center gap-1"
+                    >
+                      <span>সকল ইউজার দেখুন ({usersList.length})</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                    <div className="bg-[#07182E] p-3 rounded-2xl border border-white/5">
+                      <span className="text-slate-400 block text-[10px]">অ্যাডমিন</span>
+                      <strong className="text-[#F59E0B] text-base">{adminCount}</strong>
+                    </div>
+                    <div className="bg-[#07182E] p-3 rounded-2xl border border-white/5">
+                      <span className="text-slate-400 block text-[10px]">শিক্ষক</span>
+                      <strong className="text-amber-300 text-base">{teacherCount}</strong>
+                    </div>
+                    <div className="bg-[#07182E] p-3 rounded-2xl border border-white/5">
+                      <span className="text-slate-400 block text-[10px]">একাউন্ট্যান্ট</span>
+                      <strong className="text-emerald-400 text-base">{accountantCount}</strong>
+                    </div>
+                    <div className="bg-[#07182E] p-3 rounded-2xl border border-white/5">
+                      <span className="text-slate-400 block text-[10px]">শিক্ষার্থী</span>
+                      <strong className="text-blue-400 text-base">{studentCount}</strong>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 pt-2">
+                    {usersList.slice(0, 4).map((u) => (
+                      <div key={u.id} className="p-3 bg-[#07182E] rounded-xl border border-white/5 flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-[#163255] border border-white/10 flex items-center justify-center font-bold text-[#F59E0B] text-[10px]">
+                            {u.full_name ? u.full_name[0] : "U"}
+                          </div>
+                          <div>
+                            <span className="font-bold text-white block">{u.full_name}</span>
+                            <span className="text-[10px] text-slate-400 font-mono">{u.email}</span>
+                          </div>
+                        </div>
+
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-white/5 border border-white/10 text-[#F59E0B]">
+                          {u.role}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Audit Activity Widget */}
+                <div className="bg-[#0D2038] border border-white/10 rounded-3xl p-6 space-y-4">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-[#F59E0B]" />
+                      <span>সাম্প্রতিক অডিট লগ ও ট্র্যাকিং</span>
+                    </h3>
+                    <button
+                      onClick={() => setActiveTab("audit")}
+                      className="text-xs text-[#F59E0B] font-bold hover:underline inline-flex items-center gap-1"
+                    >
+                      <span>সকল লগ দেখুন ({auditLogs.length})</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-2">
+                    {auditLogs.slice(0, 3).map((log) => (
+                      <div key={log.id} className="p-3 bg-[#07182E] rounded-xl border border-white/5 text-xs space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-white">{log.action}</span>
+                          <span className="text-[10px] text-slate-500 font-mono">
+                            {new Date(log.timestamp).toLocaleTimeString("bn-BD", { timeStyle: "short" })}
+                          </span>
+                        </div>
+                        <p className="text-slate-400 text-[11px]">{log.details}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: Active Courses & Success Stories Quick Widget */}
+              <div className="lg:col-span-5 space-y-6">
+                {/* Active Courses Summary Widget */}
+                <div className="bg-[#0D2038] border border-white/10 rounded-3xl p-6 space-y-4">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                      <BookOpen className="w-4 h-4 text-[#F59E0B]" />
+                      <span>বর্তমান কোর্সসমূহ ({courses.length})</span>
+                    </h3>
+                    <button
+                      onClick={() => setActiveTab("courses")}
+                      className="text-xs text-[#F59E0B] font-bold hover:underline inline-flex items-center gap-1"
+                    >
+                      <span>কোর্স পরিচালনা</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-2">
+                    {courses.slice(0, 3).map((c) => (
+                      <div key={c.id} className="p-3 bg-[#07182E] rounded-xl border border-white/5 text-xs flex items-center justify-between">
+                        <div>
+                          <strong className="text-white block font-bold">{c.title}</strong>
+                          <span className="text-[10px] text-[#F59E0B] font-bold">৳{c.price.toLocaleString("bn-BD")}</span>
+                        </div>
+                        <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                          পাবলিশড
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Success Stories Summary Widget */}
+                <div className="bg-[#0D2038] border border-white/10 rounded-3xl p-6 space-y-4">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                      <Trophy className="w-4 h-4 text-[#F59E0B]" />
+                      <span>কৃতি শিক্ষার্থী স্টোরিস ({successStories.length})</span>
+                    </h3>
+                    <button
+                      onClick={() => setActiveTab("stories")}
+                      className="text-xs text-[#F59E0B] font-bold hover:underline inline-flex items-center gap-1"
+                    >
+                      <span>স্টোরি ম্যানেজ</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-2">
+                    {successStories.slice(0, 3).map((s) => (
+                      <div key={s.id} className="p-3 bg-[#07182E] rounded-xl border border-white/5 text-xs space-y-1">
+                        <div className="flex items-center justify-between">
+                          <strong className="text-white font-bold">{s.name}</strong>
+                          <span className="text-[9px] px-2 py-0.5 bg-[#F59E0B]/20 text-[#F59E0B] font-bold rounded">
+                            {s.rank}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-emerald-400">{s.institution}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: FINANCE & ACCOUNTING (DEDICATED FINANCIAL DASHBOARD) */}
+        {activeTab === "finance" && (
+          <div className="space-y-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+              <div>
+                <h2 className="text-xl font-black text-white flex items-center gap-2">
+                  <Coins className="w-6 h-6 text-[#F59E0B]" />
+                  <span>ফাইনান্সিয়াল ওভারভিউ ও আর্থিক বিবরণী</span>
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  প্রতিষ্ঠানের মোট এনরোল্ড শিক্ষার্থী, আয়-ব্যয়, শিক্ষক সম্মানী ও সর্বমোট আর্থিক হিসাব।
+                </p>
+              </div>
+
+              <button
+                onClick={() => setIsAddExpenseModalOpen(true)}
+                className="px-4 py-2.5 bg-[#F59E0B] text-black text-xs font-bold rounded-xl hover:brightness-110 transition flex items-center gap-2 shadow-lg w-fit"
+              >
+                <PlusCircle className="w-4 h-4" />
+                <span>নতুন বেতন / খরচ এন্ট্রি যোগ করুন</span>
+              </button>
+            </div>
+
+            {/* EXECUTIVE STAT CARDS (ZERO INITIAL STATE) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-[#0D2038] border border-white/10 p-5 rounded-3xl space-y-2 shadow-md hover:border-[#F59E0B]/30 transition-all">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-400">মোট এনরোল্ড শিক্ষার্থী</span>
+                  <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                    <GraduationCap className="w-5 h-5" />
+                  </div>
+                </div>
+                <p className="text-2xl font-black text-white">{studentCount} জন</p>
+                <span className="text-[10px] text-slate-400 font-bold block">
+                  সিস্টেমে মোট রেজিস্টার্ড শিক্ষার্থী
+                </span>
+              </div>
+
+              <div className="bg-[#0D2038] border border-white/10 p-5 rounded-3xl space-y-2 shadow-md hover:border-[#F59E0B]/30 transition-all">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-400">মোট সেলস / ইনকাম (Total Sales)</span>
+                  <div className="p-2 rounded-xl bg-[#F59E0B]/10 text-[#F59E0B] border border-[#F59E0B]/20">
+                    <TrendingUp className="w-5 h-5" />
+                  </div>
+                </div>
+                <p className="text-2xl font-black text-[#F59E0B]">৳{totalSales.toLocaleString("bn-BD")}</p>
+                <span className="text-[10px] text-slate-400 font-bold block">
+                  কোর্স ফি ও ভর্তি বাবদ মোট আয়
+                </span>
+              </div>
+
+              <div className="bg-[#0D2038] border border-white/10 p-5 rounded-3xl space-y-2 shadow-md hover:border-[#F59E0B]/30 transition-all">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-400">মোট প্রদেয় বেতন (Salary Given)</span>
+                  <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <Wallet className="w-5 h-5" />
+                  </div>
+                </div>
+                <p className="text-2xl font-black text-emerald-400">৳{totalSalaryGiven.toLocaleString("bn-BD")}</p>
+                <span className="text-[10px] text-slate-400 font-bold block">
+                  শিক্ষক সম্মানী ও স্টাফ সর্বমোট বেতন
+                </span>
+              </div>
+
+              <div className="bg-[#0D2038] border border-white/10 p-5 rounded-3xl space-y-2 shadow-md hover:border-[#F59E0B]/30 transition-all">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-400">মোট খরচ / ব্যয় (Total Expense)</span>
+                  <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                    <PieChart className="w-5 h-5" />
+                  </div>
+                </div>
+                <p className="text-2xl font-black text-purple-300">৳{totalExpense.toLocaleString("bn-BD")}</p>
+                <span className="text-[10px] text-purple-400 font-bold block">
+                  বিজ্ঞাপন, ভেন্যু ও অবকাঠামো খরচ
+                </span>
+              </div>
+            </div>
+
+            {/* REVENUE BREAKDOWN BY CATEGORY */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-[#0D2038] border border-white/10 p-5 rounded-3xl space-y-3">
+                <span className="text-xs font-bold text-slate-400 block">অনলাইন কোর্স বিক্রয় আয়</span>
+                <p className="text-xl font-extrabold text-white">৳০</p>
+                <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden">
+                  <div className="bg-[#F59E0B] h-full w-0" />
+                </div>
+                <span className="text-[10px] text-slate-500 block">প্রাথমিক অবস্থা (০%)</span>
+              </div>
+
+              <div className="bg-[#0D2038] border border-white/10 p-5 rounded-3xl space-y-3">
+                <span className="text-xs font-bold text-slate-400 block">ওএমআর সেন্ট্রাল মক টেস্ট ফি</span>
+                <p className="text-xl font-extrabold text-white">৳০</p>
+                <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden">
+                  <div className="bg-emerald-400 h-full w-0" />
+                </div>
+                <span className="text-[10px] text-slate-500 block">প্রাথমিক অবস্থা (০%)</span>
+              </div>
+
+              <div className="bg-[#0D2038] border border-white/10 p-5 rounded-3xl space-y-3">
+                <span className="text-xs font-bold text-slate-400 block">ডিফেন্স গাইড বই ও নোট বুক</span>
+                <p className="text-xl font-extrabold text-white">৳০</p>
+                <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden">
+                  <div className="bg-blue-400 h-full w-0" />
+                </div>
+                <span className="text-[10px] text-slate-500 block">প্রাথমিক অবস্থা (০%)</span>
+              </div>
+            </div>
+
+            {/* EXPENSE & SALARY LEDGER TABLE (WHOM TO GIVEN) */}
+            <section className="bg-[#0D2038] border border-white/10 rounded-3xl p-6 space-y-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-4">
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Receipt className="w-5 h-5 text-[#F59E0B]" />
+                  <span>কাকে কত বেতন ও সম্মানী প্রদান করা হয়েছে (Salary & Expense Ledger)</span>
+                </h3>
+
+                <div className="relative min-w-[240px]">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={ledgerSearch}
+                    onChange={(e) => setLedgerSearch(e.target.value)}
+                    placeholder="প্রাপক বা খাতের বিবরণ খুঁজুন..."
+                    className="w-full pl-9 pr-3 py-2 bg-[#07182E] border border-white/10 rounded-xl text-xs text-white placeholder-slate-400 outline-none focus:border-[#F59E0B]"
+                  />
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-slate-300">
+                  <thead>
+                    <tr className="border-b border-white/10 text-left text-slate-400 pb-2">
+                      <th className="pb-3">প্রাপকের নাম (Recipient)</th>
+                      <th className="pb-3">ভূমিকা/পদবী</th>
+                      <th className="pb-3">খাত / খরচের বিবরণ</th>
+                      <th className="pb-3">পরিমাণ (৳)</th>
+                      <th className="pb-3">তারিখ</th>
+                      <th className="pb-3 text-right">স্ট্যাটাস</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredExpenses.length > 0 ? (
+                      filteredExpenses.map((item) => (
+                        <tr key={item.id} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                          <td className="py-3 font-bold text-white flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-full bg-[#163255] border border-white/10 flex items-center justify-center font-bold text-[#F59E0B] text-xs">
+                              {item.recipient[0]}
+                            </div>
+                            <span>{item.recipient}</span>
+                          </td>
+
+                          <td className="py-3">
+                            <span className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-white/5 border border-white/10 text-slate-300">
+                              {item.role}
+                            </span>
+                          </td>
+
+                          <td className="py-3 text-slate-300">{item.purpose}</td>
+
+                          <td className="py-3 font-bold text-[#F59E0B] font-mono text-sm">
+                            ৳{item.amount.toLocaleString("bn-BD")}
+                          </td>
+
+                          <td className="py-3 text-slate-400 font-mono">{item.date}</td>
+
+                          <td className="py-3 text-right">
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                              {item.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={6} className="text-center py-12 text-slate-400 space-y-2">
+                          <Coins className="w-8 h-8 text-slate-600 mx-auto mb-2 opacity-50" />
+                          <p className="font-bold text-slate-300">প্রাথমিকভাবে কোনো আর্থিক লেনদেন বা খরচের এন্ট্রি নেই।</p>
+                          <p className="text-[11px] text-slate-500">
+                            'নতুন বেতন / খরচ এন্ট্রি যোগ করুন' বোতাম চেপে নতুন পরিশোধ হিসেব এন্ট্রি করুন।
+                          </p>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        )}
+
+        {/* TAB: USER ROLES MANAGEMENT (FULL USER CRUD: CREATE, READ, UPDATE, DELETE) */}
+        {activeTab === "users" && (
+          <section id="users" className="bg-[#0D2038] border border-white/10 rounded-3xl p-6 space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-5">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Users className="w-5 h-5 text-[#F59E0B]" />
+                <span>ইউজার রোল ম্যানেজমেন্ট ও সিকিউর অ্যাক্সেস পারমিশন</span>
+              </h3>
+            </div>
+
+            {/* Filter Pills & Search Bar */}
+            <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+                {[
+                  { id: "all", label: `সকল ইউজার (${usersList.length})` },
+                  { id: "admin", label: `অ্যাডমিন (${usersList.filter(u => u.role.toLowerCase().includes("admin")).length})` },
+                  { id: "teacher", label: `শিক্ষক (${usersList.filter(u => u.role.toLowerCase() === "teacher").length})` },
+                  { id: "accountant", label: `একাউন্ট্যান্ট (${usersList.filter(u => u.role.toLowerCase() === "accountant").length})` },
+                  { id: "student", label: `শিক্ষার্থী (${usersList.filter(u => u.role.toLowerCase() === "student").length})` },
+                ].map((f) => (
+                  <button
+                    key={f.id}
+                    onClick={() => setRoleFilter(f.id)}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                      roleFilter === f.id
+                        ? "bg-[#F59E0B] text-black shadow-md"
+                        : "bg-[#07182E] text-slate-300 hover:text-white border border-white/10"
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="relative min-w-[240px]">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={userSearchQuery}
+                  onChange={(e) => setUserSearchQuery(e.target.value)}
+                  placeholder="নাম বা ইমেল দিয়ে খুঁজুন..."
+                  className="w-full pl-9 pr-3 py-2 bg-[#07182E] border border-white/10 rounded-xl text-xs text-white placeholder-slate-400 outline-none focus:border-[#F59E0B]"
+                />
+              </div>
+            </div>
+
+            {/* User List Table with FULL CRUD (Role select, Edit, Delete) */}
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-slate-300">
                 <thead>
-                  <tr className="border-b border-white/10 pb-2 text-left">
-                    <th className="pb-2">নাম</th>
-                    <th className="pb-2">ইমেল ঠিকানা</th>
-                    <th className="pb-2">বর্তমান রোল</th>
-                    <th className="pb-2 text-right">রোল পরিবর্তন</th>
+                  <tr className="border-b border-white/10 pb-2 text-left text-slate-400">
+                    <th className="pb-3">ইউজার নাম</th>
+                    <th className="pb-3">ইমেল ঠিকানা</th>
+                    <th className="pb-3">বর্তমান রোল ও অ্যাক্সেস পারমিশন</th>
+                    <th className="pb-3 text-right">আকশন / কার্যক্রম</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {usersList.map((u) => (
-                    <tr key={u.id} className="border-b border-white/5 last:border-0">
-                      <td className="py-3 font-bold text-white">{u.full_name}</td>
-                      <td className="py-3">{u.email}</td>
-                      <td className="py-3">
-                        <span className="bg-[#07182E] border border-white/10 px-2 py-0.5 rounded capitalize font-bold text-slate-200">
-                          {u.role}
-                        </span>
-                      </td>
-                      <td className="py-3 text-right">
-                        {u.role !== "admin" ? (
-                          <div className="inline-flex gap-1.5">
-                            <button
-                              onClick={() => handleRoleReassignment(u.id, "teacher")}
-                              className="px-2.5 py-1 bg-[#FACC15]/10 hover:bg-[#FACC15]/20 text-[#FACC15] border border-[#FACC15]/20 rounded font-semibold text-[10px]"
-                            >
-                              Teacher
-                            </button>
-                            <button
-                              onClick={() => handleRoleReassignment(u.id, "accountant")}
-                              className="px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded font-semibold text-[10px]"
-                            >
-                              Accountant
-                            </button>
-                            <button
-                              onClick={() => handleRoleReassignment(u.id, "student")}
-                              className="px-2.5 py-1 bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 rounded font-semibold text-[10px]"
-                            >
-                              Student
-                            </button>
+                  {filteredUsers.length > 0 ? (
+                    filteredUsers.map((u) => (
+                      <tr key={u.id} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                        <td className="py-3 font-bold text-white flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-[#163255] border border-white/10 flex items-center justify-center font-bold text-[#F59E0B] text-xs">
+                            {u.full_name ? u.full_name[0] : "U"}
                           </div>
-                        ) : (
-                          <span className="text-[10px] text-slate-500 font-bold italic">সুপার অ্যাডমিন (লকড)</span>
-                        )}
+                          <span>{u.full_name}</span>
+                        </td>
+
+                        <td className="py-3 font-mono text-slate-300">{u.email}</td>
+
+                        <td className="py-3">
+                          <span
+                            className={`px-2.5 py-1 rounded-md font-bold text-[10px] uppercase tracking-wider border inline-block ${
+                              u.role.toLowerCase().includes("admin")
+                                ? "bg-[#F59E0B]/20 text-[#F59E0B] border-[#F59E0B]/40"
+                                : u.role.toLowerCase() === "teacher"
+                                ? "bg-amber-400/20 text-amber-300 border-amber-400/30"
+                                : u.role.toLowerCase() === "accountant"
+                                ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                                : "bg-blue-500/20 text-blue-400 border-blue-500/30"
+                            }`}
+                          >
+                            {u.role}
+                          </span>
+
+                          {/* Access Badge List */}
+                          {u.role.toLowerCase().includes("admin") && (
+                            <div className="flex items-center gap-1 mt-1 flex-wrap text-[9px] text-slate-400 font-medium">
+                              <span className="bg-[#07182E] px-1.5 py-0.5 rounded border border-white/10 text-emerald-400">কোর্স অ্যাক্সেস</span>
+                              <span className="bg-[#07182E] px-1.5 py-0.5 rounded border border-white/10 text-emerald-400">সাকসেস স্টোরি</span>
+                              <span className="bg-[#07182E] px-1.5 py-0.5 rounded border border-white/10 text-emerald-400">অডিট ট্রেইল</span>
+                            </div>
+                          )}
+                        </td>
+
+                        <td className="py-3 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            {u.role.toLowerCase() === "super admin" || isSuperAdminEmail(u.email) ? (
+                              <span className="px-3 py-1.5 rounded-xl bg-[#F59E0B]/20 text-[#F59E0B] font-extrabold border border-[#F59E0B]/40 text-xs inline-flex items-center gap-1.5 shadow-sm">
+                                <Lock className="w-3.5 h-3.5 text-[#F59E0B]" />
+                                <span>Super Admin (প্রধান অ্যাডমিন - সুরক্ষিত)</span>
+                              </span>
+                            ) : (
+                              <>
+                                {/* Role Select Dropdown (Update Role) */}
+                                <select
+                                  value={u.role.toLowerCase().includes("admin") ? "admin" : u.role}
+                                  onChange={(e) => handleRoleReassignment(u.id, e.target.value)}
+                                  className="bg-[#07182E] border border-[#F59E0B]/40 text-[#F59E0B] font-bold text-xs rounded-xl px-2.5 py-1.5 outline-none focus:border-[#F59E0B] cursor-pointer shadow-sm hover:bg-[#0E2038] transition-all"
+                                >
+                                  <option value="admin" className="bg-[#0E2038] text-white">Admin (অ্যাডমিন)</option>
+                                  <option value="teacher" className="bg-[#0E2038] text-white">Teacher (শিক্ষক)</option>
+                                  <option value="accountant" className="bg-[#0E2038] text-white">Accountant (একাউন্ট্যান্ট)</option>
+                                  <option value="student" className="bg-[#0E2038] text-white">Student (শিক্ষার্থী)</option>
+                                </select>
+
+                                {/* Edit User Button */}
+                                <button
+                                  onClick={() => handleOpenEditUserModal(u)}
+                                  title="ইউজার তথ্য সম্পাদনা করুন"
+                                  className="p-2 bg-[#F59E0B]/20 hover:bg-[#F59E0B]/30 rounded-xl text-[#F59E0B] transition-colors"
+                                >
+                                  <Edit className="w-3.5 h-3.5" />
+                                </button>
+
+                                {/* Delete User Button */}
+                                <button
+                                  onClick={() => handleDeleteUser(u.id, u.full_name)}
+                                  title="ইউজার ডিলিট করুন"
+                                  className="p-2 bg-red-500/10 hover:bg-red-500/20 rounded-xl text-red-400 transition-colors"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={4} className="text-center py-8 text-slate-400">
+                        কোনো ইউজার পাওয়া যায়নি।
                       </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
           </section>
         )}
 
+        {/* TAB: COURSES MANAGEMENT */}
         {activeTab === "courses" && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            {/* Existing courses lists */}
-            <div className="lg:col-span-7 bg-[#0D2038] border border-white/10 rounded-3xl p-6 space-y-4">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-[#FACC15]" />
-                <span>অ্যাকাডেমি কোর্সসমূহ</span>
-              </h3>
+            <div className="lg:col-span-7 bg-[#0D2038] border border-white/10 rounded-3xl p-6 space-y-5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-[#F59E0B]" />
+                  <span>বর্তমান ডিফেন্স কোর্সসমূহ (মোট {courses.length}টি)</span>
+                </h3>
 
-              <div className="space-y-3">
+                <a
+                  href="/courses"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-[#F59E0B] hover:underline font-bold"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>লাইভ পেজ দেখুন</span>
+                </a>
+              </div>
+
+              <div className="space-y-4">
                 {courses.map((c) => (
                   <div
                     key={c.id}
-                    className="bg-[#07182E] p-4 rounded-xl border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                    className="bg-[#07182E] p-4 rounded-2xl border border-white/10 flex flex-col justify-between gap-3 text-xs shadow-md"
                   >
-                    {editingCourseId === c.id ? (
-                      <div className="flex-1 space-y-2">
-                        <input
-                          type="text"
-                          value={editingCourseTitle}
-                          onChange={(e) => setEditingCourseTitle(e.target.value)}
-                          className="w-full bg-[#0D2038] border border-white/10 rounded-lg p-2 text-xs text-white"
-                        />
-                        <div className="flex gap-2">
-                          <input
-                            type="number"
-                            value={editingCoursePrice}
-                            onChange={(e) => setEditingCoursePrice(e.target.value)}
-                            className="bg-[#0D2038] border border-white/10 rounded-lg p-2 text-xs text-white w-28"
-                          />
-                          <button
-                            onClick={() => handleUpdateCourse(c.id)}
-                            className="px-3 py-1.5 bg-emerald-500 text-black font-bold rounded-lg hover:bg-emerald-400 transition"
-                          >
-                            Save
-                          </button>
-                          <button
-                            onClick={() => setEditingCourseId(null)}
-                            className="px-3 py-1.5 bg-white/5 border border-white/10 text-slate-300 rounded-lg"
-                          >
-                            Cancel
-                          </button>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-extrabold text-white text-sm">
+                            {c.title}
+                          </span>
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-[#F59E0B]/20 text-[#F59E0B] font-bold border border-[#F59E0B]/30">
+                            {c.categoryLabel}
+                          </span>
                         </div>
+                        <p className="text-slate-400 text-[11px] line-clamp-1">{c.tagline}</p>
                       </div>
-                    ) : (
-                      <>
-                        <div className="space-y-1">
-                          <span className="font-bold text-white block">{c.title}</span>
-                          <span className="text-[10px] text-slate-400 font-mono">Slug: {c.slug}</span>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <span className="font-mono text-emerald-400 font-bold">৳{Number(c.price).toLocaleString("bn-BD")}</span>
-                          <div className="flex gap-1">
-                            <button
-                              onClick={() => {
-                                setEditingCourseId(c.id);
-                                setEditingCourseTitle(c.title);
-                                setEditingCoursePrice(c.price.toString());
-                              }}
-                              className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-slate-300 hover:text-white"
-                            >
-                              <Edit className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteCourse(c.id)}
-                              className="p-1.5 bg-red-500/10 hover:bg-red-500/20 rounded-lg text-red-400"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                      </>
-                    )}
+
+                      <button
+                        onClick={() => handleToggleCoursePublish(c)}
+                        className={`px-2.5 py-1 rounded-md text-[10px] font-bold shrink-0 ${
+                          c.published !== false
+                            ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                            : "bg-slate-700 text-slate-300"
+                        }`}
+                      >
+                        {c.published !== false ? "পাবলিশড" : "আনপাবলিশড"}
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] text-slate-300 pt-2 border-t border-white/5">
+                      <div>
+                        <span className="text-slate-400 block">মূল্য:</span>
+                        <strong className="text-[#F59E0B]">৳{c.price.toLocaleString("bn-BD")}</strong>
+                      </div>
+
+                      <div>
+                        <span className="text-slate-400 block">ফরম্যাট:</span>
+                        <strong className="text-white capitalize">{c.detailLayout || "standard"}</strong>
+                      </div>
+
+                      <div>
+                        <span className="text-slate-400 block">ভিডিও প্রিভিউ:</span>
+                        <strong className={c.videoUrl ? "text-emerald-400" : "text-slate-500"}>
+                          {c.videoUrl ? "যুক্ত আছে" : "নেই"}
+                        </strong>
+                      </div>
+
+                      <div className="flex items-center justify-end gap-1.5 pt-1">
+                        <a
+                          href={`/courses/${c.id}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          title="কোর্স পেজ প্রিভিউ"
+                          className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-slate-300 hover:text-white"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </a>
+                        <button
+                          onClick={() => handleOpenEditCourseModal(c)}
+                          title="সম্পাদনা করুন (Update)"
+                          className="p-1.5 bg-[#F59E0B]/20 hover:bg-[#F59E0B]/30 rounded-lg text-[#F59E0B]"
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteCourse(c.id, c.title)}
+                          title="ডিলিট করুন (Delete)"
+                          className="p-1.5 bg-red-500/10 hover:bg-red-500/20 rounded-lg text-red-400"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Create new course */}
             <div className="lg:col-span-5 bg-[#0D2038] border border-white/10 rounded-3xl p-6 h-fit space-y-4">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <Plus className="w-5 h-5 text-[#F59E0B]" />
-                <span>নতুন কোর্স যুক্ত করুন</span>
+                <span>নতুন ডিফেন্স কোর্স যোগ করুন</span>
               </h3>
 
-              <form onSubmit={handleAddCourse} className="space-y-3">
+              <form onSubmit={handleAddCourseSubmit} className="space-y-3 text-xs">
                 <div>
-                  <label className="text-xs font-bold text-slate-300 block mb-1">কোর্সের শিরোনাম:*</label>
+                  <label className="font-bold text-slate-300 block mb-1">ক্যাটাগরি:*</label>
+                  <select
+                    value={newCourse.category}
+                    onChange={(e) =>
+                      setNewCourse({
+                        ...newCourse,
+                        category: e.target.value as any,
+                      })
+                    }
+                    className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
+                  >
+                    <option value="defense">ডিফেন্স ও মিলিটারি (BAFA, BMA, BN, ISSB)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-300 block mb-1">কোর্সের নাম (Title):*</label>
                   <input
                     type="text"
                     required
-                    placeholder="যেমন: ইঞ্জিনিয়ারিং ফান্ডামেন্টাল ২০২৩"
-                    value={courseTitle}
-                    onChange={(e) => setCourseTitle(e.target.value)}
-                    className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-xs text-white outline-none focus:border-[#F59E0B]"
+                    placeholder="যেমন: BAFA Preliminary Course"
+                    value={newCourse.title || ""}
+                    onChange={(e) => setNewCourse({ ...newCourse, title: e.target.value })}
+                    className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
                   />
                 </div>
+
                 <div>
-                  <label className="text-xs font-bold text-slate-300 block mb-1">মূল্য (৳):*</label>
+                  <label className="font-bold text-slate-300 block mb-1">কোর্স ট্যাগলাইন/সাবটাইটেল:</label>
                   <input
-                    type="number"
-                    required
-                    placeholder="যেমন: ৭৯০০"
-                    value={coursePrice}
-                    onChange={(e) => setCoursePrice(e.target.value)}
-                    className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-xs text-white outline-none focus:border-[#F59E0B]"
+                    type="text"
+                    placeholder="যেমন: বিমান বাহিনী লিখিত ও মেধা পরীক্ষা কভারেজ"
+                    value={newCourse.tagline || ""}
+                    onChange={(e) => setNewCourse({ ...newCourse, tagline: e.target.value })}
+                    className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
                   />
                 </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="font-bold text-slate-300 block mb-1">নির্ধারিত ফি (৳):*</label>
+                    <input
+                      type="number"
+                      required
+                      placeholder="8500"
+                      value={newCourse.price || ""}
+                      onChange={(e) =>
+                        setNewCourse({ ...newCourse, price: parseFloat(e.target.value) })
+                      }
+                      className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-300 block mb-1">আসল মূল্য (৳):</label>
+                    <input
+                      type="number"
+                      placeholder="14000"
+                      value={newCourse.originalPrice || ""}
+                      onChange={(e) =>
+                        setNewCourse({
+                          ...newCourse,
+                          originalPrice: parseFloat(e.target.value),
+                        })
+                      }
+                      className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-300 block mb-1">ডিটেইল পেজ ফরম্যাট / লেআউট:*</label>
+                  <select
+                    value={newCourse.detailLayout || "standard"}
+                    onChange={(e) =>
+                      setNewCourse({
+                        ...newCourse,
+                        detailLayout: e.target.value as any,
+                      })
+                    }
+                    className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
+                  >
+                    <option value="standard">Standard Split Layout</option>
+                    <option value="video_hero">Video-Focused Hero Layout</option>
+                    <option value="modern_split">Modern Tabbed Layout</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-300 block mb-1">ভিডিও লিংক (ইউটিউব/ভিমিও - ঐচ্ছিক):</label>
+                  <input
+                    type="url"
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    value={newCourse.videoUrl || ""}
+                    onChange={(e) => setNewCourse({ ...newCourse, videoUrl: e.target.value })}
+                    className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-300 block mb-1">ছবি URL (Image Link):</label>
+                  <input
+                    type="text"
+                    placeholder="https://images.unsplash.com/..."
+                    value={newCourse.imageUrl || ""}
+                    onChange={(e) => setNewCourse({ ...newCourse, imageUrl: e.target.value })}
+                    className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-300 block mb-1">কোর্স বিস্তারিত বিবরণ:</label>
+                  <textarea
+                    rows={3}
+                    placeholder="কোর্সের পূর্ণাঙ্গ বিস্তারিত তথ্য লিখুন..."
+                    value={newCourse.description || ""}
+                    onChange={(e) =>
+                      setNewCourse({ ...newCourse, description: e.target.value })
+                    }
+                    className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-300 block mb-1">কোর্স ফিচারসমূহ (প্রতি লাইনে একটি):</label>
+                  <textarea
+                    rows={3}
+                    placeholder="১০০+ লাইভ ক্লাস&#10;৫০+ ডেইলি ওএমআর এক্সাম&#10;১-অন-১ ডাউট সলভ"
+                    value={featuresInput}
+                    onChange={(e) => setFeaturesInput(e.target.value)}
+                    className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-300 block mb-1">মেন্টরদের নাম (কমা দিয়ে আলাদা করুন):</label>
+                  <input
+                    type="text"
+                    placeholder="মেজর (অব.) সাজ্জাদ, ইঞ্জি. তাসনিম আহমেদ"
+                    value={instructorsInput}
+                    onChange={(e) => setInstructorsInput(e.target.value)}
+                    className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
+                  />
+                </div>
+
                 <button
                   type="submit"
-                  className="w-full py-3.5 text-xs font-bold text-slate-950 bg-[#F59E0B] rounded-xl hover:bg-[#FACC15] transition"
+                  className="w-full py-3.5 text-xs font-bold text-black bg-[#F59E0B] rounded-xl hover:brightness-110 transition shadow-lg mt-2"
                 >
-                  কোর্স তৈরি করুন
+                  নতুন কোর্স সেভ করুন
                 </button>
               </form>
             </div>
           </div>
         )}
 
-        {activeTab === "branches" && (
+        {/* TAB: STUDENT SUCCESS STORIES */}
+        {activeTab === "stories" && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            {/* Existing branches list */}
-            <div className="lg:col-span-7 bg-[#0D2038] border border-white/10 rounded-3xl p-6 space-y-4">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <ListFilter className="w-5 h-5 text-[#F59E0B]" />
-                <span>ভর্তি পোর্টাল শাখা সমূহ</span>
-              </h3>
+            <div className="lg:col-span-7 bg-[#0D2038] border border-white/10 rounded-3xl p-6 space-y-5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Trophy className="w-5 h-5 text-[#F59E0B]" />
+                  <span>কৃতি শিক্ষার্থী সাকসেস স্টোরিস (মোট {successStories.length}টি)</span>
+                </h3>
 
-              <div className="space-y-3">
-                {branches.map((b) => (
+                <a
+                  href="/success-stories"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-[#F59E0B] hover:underline font-bold"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>লাইভ পেজ দেখুন</span>
+                </a>
+              </div>
+
+              <div className="space-y-4">
+                {successStories.map((story) => (
                   <div
-                    key={b.id}
-                    className="bg-[#07182E] p-4 rounded-xl border border-white/5 flex items-center justify-between text-xs"
+                    key={story.id}
+                    className="bg-[#07182E] p-4 rounded-2xl border border-white/10 flex flex-col justify-between gap-3 text-xs shadow-md"
                   >
-                    {editingBranchId === b.id ? (
-                      <div className="flex-1 space-y-2">
-                        <div className="grid grid-cols-2 gap-2">
-                          <input
-                            type="text"
-                            placeholder="Branch Slug (e.g. online)"
-                            value={editingBranchName}
-                            onChange={(e) => setEditingBranchName(e.target.value)}
-                            className="bg-[#0D2038] border border-white/10 rounded-lg p-2 text-xs text-white"
-                          />
-                          <input
-                            type="text"
-                            placeholder="Branch Label (e.g. অনলাইন)"
-                            value={editingBranchLabel}
-                            onChange={(e) => setEditingBranchLabel(e.target.value)}
-                            className="bg-[#0D2038] border border-white/10 rounded-lg p-2 text-xs text-white"
-                          />
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleUpdateBranch(b.id)}
-                            className="px-3 py-1.5 bg-emerald-500 text-black font-bold rounded-lg hover:bg-emerald-400 transition"
-                          >
-                            Save
-                          </button>
-                          <button
-                            onClick={() => setEditingBranchId(null)}
-                            className="px-3 py-1.5 bg-white/5 border border-white/10 text-slate-300 rounded-lg"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="space-y-1">
-                          <span className="font-bold text-white block text-sm">{b.label}</span>
-                          <span className="text-[10px] text-slate-400 font-mono">Slug: {b.name}</span>
-                        </div>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => {
-                              setEditingBranchId(b.id);
-                              setEditingBranchName(b.name);
-                              setEditingBranchLabel(b.label);
-                            }}
-                            className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-slate-300 hover:text-white"
-                          >
-                            <Edit className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteBranch(b.id)}
-                            className="p-1.5 bg-red-500/10 hover:bg-red-500/20 rounded-lg text-red-400"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          <span className="font-extrabold text-white text-sm">
+                            {story.name}
+                          </span>
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-[#F59E0B]/20 text-[#F59E0B] font-bold border border-[#F59E0B]/30">
+                            {story.rank}
+                          </span>
                         </div>
-                      </>
-                    )}
+                        <p className="text-emerald-400 text-[11px] font-semibold">
+                          {story.institution}
+                        </p>
+                        <p className="text-slate-400 text-[11px] italic line-clamp-1">
+                          "{story.quote}"
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={() => handleToggleStoryPublish(story)}
+                        className={`px-2.5 py-1 rounded-md text-[10px] font-bold shrink-0 ${
+                          story.published !== false
+                            ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                            : "bg-slate-700 text-slate-300"
+                        }`}
+                      >
+                        {story.published !== false ? "পাবলিশড" : "আনপাবলিশড"}
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] text-slate-300 pt-2 border-t border-white/5">
+                      <div>
+                        <span className="text-slate-400">কলেজ: </span>
+                        <strong>{story.hscCollege}</strong>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => setEditingStory(story)}
+                          title="সম্পাদনা করুন"
+                          className="p-1.5 bg-[#F59E0B]/20 hover:bg-[#F59E0B]/30 rounded-lg text-[#F59E0B]"
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteStory(story.id, story.name)}
+                          title="ডিলিট করুন"
+                          className="p-1.5 bg-red-500/10 hover:bg-red-500/20 rounded-lg text-red-400"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Create new branch */}
             <div className="lg:col-span-5 bg-[#0D2038] border border-white/10 rounded-3xl p-6 h-fit space-y-4">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <Plus className="w-5 h-5 text-[#F59E0B]" />
-                <span>নতুন শাখা যুক্ত করুন</span>
+                <span>নতুন কৃতি শিক্ষার্থী যোগ করুন</span>
               </h3>
 
-              <form onSubmit={handleAddBranch} className="space-y-3">
+              <form onSubmit={handleAddStorySubmit} className="space-y-3 text-xs">
                 <div>
-                  <label className="text-xs font-bold text-slate-300 block mb-1">শাখার কোড/আইডি (ইংরেজিতে):*</label>
+                  <label className="font-bold text-slate-300 block mb-1">ক্যাটাগরি:*</label>
+                  <select
+                    value={newStory.category || "bafa"}
+                    onChange={(e) => setNewStory({ ...newStory, category: e.target.value as any })}
+                    className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
+                  >
+                    <option value="bafa">BAFA (বিমান বাহিনী)</option>
+                    <option value="bma">BMA (সেনাবাহিনী)</option>
+                    <option value="bn">BN (নৌবাহিনী)</option>
+                    <option value="issb">ISSB (গ্রিন কার্ড)</option>
+                    <option value="general">সাধারণ মেধা</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-300 block mb-1">শিক্ষার্থীর নাম:*</label>
                   <input
                     type="text"
                     required
-                    placeholder="যেমন: online, dhaka, rajshahi"
-                    value={branchName}
-                    onChange={(e) => setBranchName(e.target.value)}
-                    className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-xs text-white outline-none focus:border-[#F59E0B]"
+                    placeholder="যেমন: ক্যাডেট ফাহিম রেজওয়ান"
+                    value={newStory.name || ""}
+                    onChange={(e) => setNewStory({ ...newStory, name: e.target.value })}
+                    className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
                   />
                 </div>
+
                 <div>
-                  <label className="text-xs font-bold text-slate-300 block mb-1">শাখার নাম (বাংলায়):*</label>
+                  <label className="font-bold text-slate-300 block mb-1">মেধা স্থান/র‍্যাংক:*</label>
                   <input
                     type="text"
                     required
-                    placeholder="যেমন: অনলাইন, ঢাকা শাখা"
-                    value={branchLabel}
-                    onChange={(e) => setBranchLabel(e.target.value)}
-                    className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-xs text-white outline-none focus:border-[#F59E0B]"
+                    placeholder="যেমন: মেধা স্থান: ০১ (ফ্লাইট ক্যাডেট)"
+                    value={newStory.rank || ""}
+                    onChange={(e) => setNewStory({ ...newStory, rank: e.target.value })}
+                    className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
                   />
                 </div>
+
+                <div>
+                  <label className="font-bold text-slate-300 block mb-1">প্রতিষ্ঠানের নাম:*</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="যেমন: বাংলাদেশ বিমান বাহিনী (BAFA 88th Officer)"
+                    value={newStory.institution || ""}
+                    onChange={(e) => setNewStory({ ...newStory, institution: e.target.value })}
+                    className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-300 block mb-1">এইচএসসি কলেজ/শিক্ষা প্রতিষ্ঠান:</label>
+                  <input
+                    type="text"
+                    placeholder="যেমন: নটর ডেম কলেজ, ঢাকা"
+                    value={newStory.hscCollege || ""}
+                    onChange={(e) => setNewStory({ ...newStory, hscCollege: e.target.value })}
+                    className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-300 block mb-1">প্রোগ্রাম/কোর্সের নাম:</label>
+                  <input
+                    type="text"
+                    placeholder="যেমন: BAFA Officer Cadet Course"
+                    value={newStory.program || ""}
+                    onChange={(e) => setNewStory({ ...newStory, program: e.target.value })}
+                    className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-300 block mb-1">স্কোর/মার্কস:</label>
+                  <input
+                    type="text"
+                    placeholder="যেমন: আইকিউ স্কোর: ৯৮/১০০"
+                    value={newStory.score || ""}
+                    onChange={(e) => setNewStory({ ...newStory, score: e.target.value })}
+                    className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-300 block mb-1">ছবি URL (Image Link):</label>
+                  <input
+                    type="text"
+                    placeholder="https://images.unsplash.com/..."
+                    value={newStory.imageUrl || ""}
+                    onChange={(e) => setNewStory({ ...newStory, imageUrl: e.target.value })}
+                    className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-300 block mb-1">শিক্ষার্থীর উক্তি / রিভিউ (Quote):</label>
+                  <textarea
+                    rows={3}
+                    placeholder="দুর্বার একাডেমির স্পেশাল গাইডলাইন আমার স্বপ্নের মূল ভিত্তি ছিল..."
+                    value={newStory.quote || ""}
+                    onChange={(e) => setNewStory({ ...newStory, quote: e.target.value })}
+                    className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
+                  />
+                </div>
+
                 <button
                   type="submit"
-                  className="w-full py-3.5 text-xs font-bold text-slate-950 bg-[#F59E0B] rounded-xl hover:bg-[#FACC15] transition"
+                  className="w-full py-3.5 text-xs font-bold text-black bg-[#F59E0B] rounded-xl hover:brightness-110 transition shadow-lg mt-2"
                 >
-                  শাখা তৈরি করুন
+                  সাকসেস স্টোরি সেভ করুন
                 </button>
               </form>
             </div>
           </div>
         )}
 
-        {activeTab === "payments" && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            {/* Existing payment methods list */}
-            <div className="lg:col-span-7 bg-[#0D2038] border border-white/10 rounded-3xl p-6 space-y-4">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <ListFilter className="w-5 h-5 text-[#FACC15]" />
-                <span>পেমেন্ট মেথড সমূহ</span>
-              </h3>
+        {/* TAB: AUDIT LOGS WITH 15-LOG PAGINATION & AUTOMATIC 30-DAY RETENTION */}
+        {activeTab === "audit" && (
+          <section id="audit" className="bg-[#0D2038] border border-white/10 rounded-3xl p-6 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-5">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-[#F59E0B]" />
+                  <span>অডিট ট্রেইল ও সর্বজনীন সিস্টেম লগস</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  সিস্টেমের সমস্ত অ্যাডমিন, শিক্ষক ও ইউজার অ্যাক্টিভিটি অটোমেটিক ট্র্যাক হয়।
+                </p>
+              </div>
 
-              <div className="space-y-3">
-                {paymentMethods.map((pm) => (
-                  <div
-                    key={pm.id}
-                    className="bg-[#07182E] p-4 rounded-xl border border-white/5 flex items-center justify-between text-xs"
-                  >
-                    {editingPmId === pm.id ? (
-                      <div className="flex-1 space-y-2">
-                        <div className="grid grid-cols-2 gap-2">
-                          <input
-                            type="text"
-                            placeholder="Method ID (e.g. bkash)"
-                            value={editingPmName}
-                            onChange={(e) => setEditingPmName(e.target.value)}
-                            className="bg-[#0D2038] border border-white/10 rounded-lg p-2 text-xs text-white"
-                          />
-                          <input
-                            type="text"
-                            placeholder="Method Label (e.g. bKash (বিকাশ))"
-                            value={editingPmLabel}
-                            onChange={(e) => setEditingPmLabel(e.target.value)}
-                            className="bg-[#0D2038] border border-white/10 rounded-lg p-2 text-xs text-white"
-                          />
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleUpdatePaymentMethod(pm.id)}
-                            className="px-3 py-1.5 bg-emerald-500 text-black font-bold rounded-lg hover:bg-emerald-400 transition"
-                          >
-                            Save
-                          </button>
-                          <button
-                            onClick={() => setEditingPmId(null)}
-                            className="px-3 py-1.5 bg-white/5 border border-white/10 text-slate-300 rounded-lg"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="space-y-1">
-                          <span className="font-bold text-white block text-sm">{pm.label}</span>
-                          <span className="text-[10px] text-slate-400 font-mono">ID: {pm.name}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => {
-                              setEditingPmId(pm.id);
-                              setEditingPmName(pm.name);
-                              setEditingPmLabel(pm.label);
-                            }}
-                            className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-slate-300 hover:text-white"
-                          >
-                            <Edit className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleDeletePaymentMethod(pm.id)}
-                            className="p-1.5 bg-red-500/10 hover:bg-red-500/20 rounded-lg text-red-400"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))}
+              {/* 30-Day Retention Badge */}
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold shrink-0">
+                <Clock className="w-3.5 h-3.5" />
+                <span>৩০ দিনের স্বয়ংক্রিয় রিটেনশন পলিসি (Auto Purge)</span>
               </div>
             </div>
 
-            {/* Create new payment method */}
-            <div className="lg:col-span-5 bg-[#0D2038] border border-white/10 rounded-3xl p-6 h-fit space-y-4">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Plus className="w-5 h-5 text-[#FACC15]" />
-                <span>নতুন পেমেন্ট মেথড যুক্ত করুন</span>
-              </h3>
+            {/* Log Items Grid List */}
+            <div className="space-y-3">
+              {paginatedAuditLogs.length > 0 ? (
+                paginatedAuditLogs.map((log) => (
+                  <div
+                    key={log.id}
+                    className="p-4 bg-[#07182E] rounded-2xl border border-white/10 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md hover:border-[#F59E0B]/30 transition-all"
+                  >
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-white text-sm">{log.action}</span>
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                            log.role.toLowerCase().includes("admin")
+                              ? "bg-[#F59E0B]/20 text-[#F59E0B] border border-[#F59E0B]/30"
+                              : log.role === "teacher"
+                              ? "bg-amber-400/20 text-amber-300 border border-amber-400/30"
+                              : log.role === "system"
+                              ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                              : "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                          }`}
+                        >
+                          {log.role}
+                        </span>
+                      </div>
 
-              <form onSubmit={handleAddPaymentMethod} className="space-y-3">
-                <div>
-                  <label className="text-xs font-bold text-slate-300 block mb-1">পেমেন্ট মেথড আইডি (ইংরেজিতে):*</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="যেমন: bkash, nagad, rocket"
-                    value={pmName}
-                    onChange={(e) => setPmName(e.target.value)}
-                    className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-xs text-white outline-none focus:border-[#F59E0B]"
-                  />
+                      <p className="text-slate-300 leading-relaxed">{log.details}</p>
+
+                      <span className="text-[11px] text-slate-400 block font-medium">
+                        সম্পাদনকারী: <strong className="text-white">{log.actor}</strong>
+                      </span>
+                    </div>
+
+                    <div className="text-[11px] text-slate-400 font-mono shrink-0 bg-[#0D2038] px-3 py-1.5 rounded-xl border border-white/5 h-fit">
+                      {new Date(log.timestamp).toLocaleString("bn-BD", {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                      })}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-12 bg-[#07182E] rounded-2xl border border-white/10 text-slate-400">
+                  কোনো অডিট লগ রেকর্ড পাওয়া যায়নি।
                 </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-300 block mb-1">ডিসপ্লে লেবেল (বাংলায়):*</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="যেমন: bKash (বিকাশ)"
-                    value={pmLabel}
-                    onChange={(e) => setPmLabel(e.target.value)}
-                    className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-xs text-white outline-none focus:border-[#F59E0B]"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="w-full py-3.5 text-xs font-bold text-[#0D2038] bg-[#F59E0B] rounded-xl hover:bg-[#FACC15] transition"
-                >
-                  পেমেন্ট মেথড তৈরি করুন
-                </button>
-              </form>
+              )}
             </div>
-          </div>
+
+            {/* Pagination Controls (15 Logs per page) */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-white/10 text-xs">
+              <span className="text-slate-400">
+                মোট <strong className="text-white">{auditLogs.length}</strong> টি ট্র্যাকিং লগের মধ্যে{" "}
+                <strong className="text-[#F59E0B]">
+                  {(auditCurrentPage - 1) * logsPerPage + 1} -{" "}
+                  {Math.min(auditCurrentPage * logsPerPage, auditLogs.length)}
+                </strong>{" "}
+                প্রদর্শিত হচ্ছে।
+              </span>
+
+              <div className="flex items-center gap-2">
+                <button
+                  disabled={auditCurrentPage === 1}
+                  onClick={() => setAuditCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  className={`px-3 py-1.5 rounded-xl font-bold border transition flex items-center gap-1 ${
+                    auditCurrentPage === 1
+                      ? "bg-white/5 text-slate-600 border-white/5 cursor-not-allowed"
+                      : "bg-[#07182E] text-slate-300 hover:text-white border-white/10 hover:border-[#F59E0B]"
+                  }`}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span>পূর্ববর্তী</span>
+                </button>
+
+                <span className="px-3 py-1.5 bg-[#07182E] border border-white/10 rounded-xl font-extrabold text-[#F59E0B]">
+                  পৃষ্ঠা {auditCurrentPage} / {totalAuditPages}
+                </span>
+
+                <button
+                  disabled={auditCurrentPage === totalAuditPages}
+                  onClick={() => setAuditCurrentPage((prev) => Math.min(prev + 1, totalAuditPages))}
+                  className={`px-3 py-1.5 rounded-xl font-bold border transition flex items-center gap-1 ${
+                    auditCurrentPage === totalAuditPages
+                      ? "bg-white/5 text-slate-600 border-white/5 cursor-not-allowed"
+                      : "bg-[#07182E] text-slate-300 hover:text-white border-white/10 hover:border-[#F59E0B]"
+                  }`}
+                >
+                  <span>পরবর্তী</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </section>
         )}
+      </main>
 
-        {activeTab === "cms" && (
-          <section id="cms" className="bg-[#0D2038] border border-white/10 rounded-3xl p-6 space-y-4">
-            <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <Edit className="w-5 h-5 text-[#F59E0B]" />
-              <span>পাবলিক ল্যান্ডিং পেজ কনফিগারেশন (সিএমএস)</span>
-            </h3>
+      {/* ADD NEW EXPENSE PAYOUT MODAL */}
+      {isAddExpenseModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-gradient-to-b from-[#0F2644] to-[#08182D] border border-[#F59E0B]/30 rounded-3xl p-6 sm:p-7 max-w-md w-full space-y-4 shadow-[0_0_50px_rgba(0,0,0,0.9),0_0_30px_rgba(245,158,11,0.15)] relative transform transition-all duration-300 my-auto">
+            <div className="absolute -top-px left-12 right-12 h-px bg-gradient-to-r from-transparent via-[#F59E0B] to-transparent shadow-[0_0_10px_#F59E0B]" />
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <h3 className="text-lg font-black text-white flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-[#F59E0B]/15 border border-[#F59E0B]/30 flex items-center justify-center text-[#F59E0B] shadow-inner">
+                  <Coins className="w-5 h-5" />
+                </div>
+                <span>নতুন আয় / বেতন / খরচ এন্ট্রি যুক্ত করুন</span>
+              </h3>
+              <button
+                onClick={() => setIsAddExpenseModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 text-slate-400 hover:text-white flex items-center justify-center transition-all border border-white/10"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
-            <div className="space-y-4 text-xs">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-300">স্টুডেন্ট চ্যালেঞ্জ সেকশন হেডিং কপি:</label>
-                <textarea
-                  rows={3}
-                  value={cmsValue}
-                  onChange={(e) => setCmsValue(e.target.value)}
-                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-4 text-xs text-white outline-none"
+            <form onSubmit={handleAddExpenseSubmit} className="space-y-4 text-xs">
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">প্রাপক বা উৎসের নাম:*</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="যেমন: ড. সাজ্জাদ বা কোর্স সেলস ইনকাম"
+                  value={newExpense.recipient}
+                  onChange={(e) => setNewExpense({ ...newExpense, recipient: e.target.value })}
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
                 />
               </div>
 
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">ভূমিকা / পদবী / খাত টাইপ:*</label>
+                <select
+                  value={newExpense.role}
+                  onChange={(e) => setNewExpense({ ...newExpense, role: e.target.value })}
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
+                >
+                  <option value="কোর্স সেলস ইনকাম">কোর্স সেলস ইনকাম (Income)</option>
+                  <option value="শিক্ষক/মেন্টর">শিক্ষক/মেন্টর (Teacher Salary)</option>
+                  <option value="অ্যাডমিন ২">অ্যাডমিন ২ / সহকারী অ্যাডমিন (Admin Salary)</option>
+                  <option value="একাউন্ট্যান্ট">একাউন্ট্যান্ট (Accountant Salary)</option>
+                  <option value="মার্কেটিং এজেন্সি">মার্কেটিং ও বিজ্ঞাপন (Marketing)</option>
+                  <option value="ভেন্যু পার্টনার">ভেন্যু পার্টনার (Venue Expense)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">পরিমাণ (৳):*</label>
+                <input
+                  type="number"
+                  required
+                  placeholder="যেমন: 50000"
+                  value={newExpense.amount}
+                  onChange={(e) => setNewExpense({ ...newExpense, amount: e.target.value })}
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">খাত / বিবরণ:</label>
+                <textarea
+                  rows={3}
+                  placeholder="যেমন: কোর্স ভর্তি ফি বা মক টেস্ট ভেন্যু খরচ..."
+                  value={newExpense.purpose}
+                  onChange={(e) => setNewExpense({ ...newExpense, purpose: e.target.value })}
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddExpenseModalOpen(false)}
+                  className="w-1/2 py-3 bg-white/5 border border-white/10 text-white rounded-xl font-bold"
+                >
+                  বাতিল
+                </button>
+                <button
+                  type="submit"
+                  className="w-1/2 py-3 bg-[#F59E0B] text-black font-bold rounded-xl hover:brightness-110 shadow-lg"
+                >
+                  এন্ট্রি সেভ করুন
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+
+
+      {/* EDIT USER DETAILS MODAL (USER UPDATE) */}
+      {editingUser && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-gradient-to-b from-[#0F2644] to-[#08182D] border border-[#F59E0B]/30 rounded-3xl p-6 sm:p-7 max-w-md w-full space-y-4 shadow-[0_0_50px_rgba(0,0,0,0.9),0_0_30px_rgba(245,158,11,0.15)] relative transform transition-all duration-300 my-auto">
+            <div className="absolute -top-px left-12 right-12 h-px bg-gradient-to-r from-transparent via-[#F59E0B] to-transparent shadow-[0_0_10px_#F59E0B]" />
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <h3 className="text-lg font-black text-white flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-[#F59E0B]/15 border border-[#F59E0B]/30 flex items-center justify-center text-[#F59E0B] shadow-inner">
+                  <Edit className="w-5 h-5" />
+                </div>
+                <span>ইউজার তথ্য সম্পাদনা করুন</span>
+              </h3>
               <button
-                onClick={handleSaveCMS}
-                className="px-5 py-2.5 text-xs font-bold text-slate-950 bg-[#F59E0B] rounded-xl flex items-center gap-2"
+                onClick={() => setEditingUser(null)}
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 text-slate-400 hover:text-white flex items-center justify-center transition-all border border-white/10"
               >
-                <Save className="w-4 h-4" />
-                <span>হেডিং কপি সংরক্ষণ করুন</span>
+                <X className="w-4 h-4" />
               </button>
             </div>
-          </section>
-        )}
 
-        {activeTab === "audit" && (
-          <section id="audit" className="bg-[#0D2038] border border-white/10 rounded-3xl p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-white/5 pb-3">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-red-400" />
-                <span>সিস্টেম অডিট ট্রেইল (Immutable & Append-Only)</span>
-              </h3>
-              <span className="bg-red-500/10 text-red-400 px-3 py-1 rounded text-[10px] font-bold border border-red-500/20">
-                READ ONLY MODE
-              </span>
-            </div>
+            <form onSubmit={handleUpdateUserSubmit} className="space-y-4 text-xs">
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">ইউজারের নাম:*</label>
+                <input
+                  type="text"
+                  required
+                  value={editingUser.full_name || ""}
+                  onChange={(e) => setEditingUser({ ...editingUser, full_name: e.target.value })}
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
+                />
+              </div>
 
-            <div className="space-y-3">
-              {auditLogs.map((log) => (
-                <div
-                  key={log.id}
-                  className="bg-[#07182E] p-4 rounded-xl border border-white/5 text-xs space-y-2 relative"
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">ইমেল ঠিকানা:*</label>
+                <input
+                  type="email"
+                  required
+                  value={editingUser.email || ""}
+                  onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">নির্ধারিত রোল (User Role):*</label>
+                <select
+                  value={editingUser.role}
+                  onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value })}
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
                 >
-                  <div className="flex justify-between text-slate-400">
-                    <span>{log.timestamp}</span>
-                    <span className="font-bold text-[#FACC15]">{log.action}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-300">কর্তা: {log.actor} ({log.role})</span>
-                    <p className="text-white mt-1 font-mono">{log.details}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+                  <option value="Admin 2">Admin (অ্যাডমিন)</option>
+                  <option value="teacher">Teacher (শিক্ষক / মেন্টর)</option>
+                  <option value="accountant">Accountant (একাউন্ট্যান্ট)</option>
+                  <option value="student">Student (শিক্ষার্থী)</option>
+                </select>
+              </div>
 
-      </main>
+
+
+              <div className="flex gap-3 pt-3 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setEditingUser(null)}
+                  className="w-1/2 py-3 bg-white/5 border border-white/10 text-white rounded-xl font-bold"
+                >
+                  বাতিল
+                </button>
+                <button
+                  type="submit"
+                  className="w-1/2 py-3 bg-[#F59E0B] text-black font-bold rounded-xl hover:brightness-110 shadow-lg"
+                >
+                  পরিবর্তন সেভ করুন
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT COURSE MODAL */}
+      {editingCourse && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-gradient-to-b from-[#0F2644] to-[#08182D] border border-[#F59E0B]/30 rounded-3xl p-6 sm:p-7 max-w-2xl w-full space-y-4 shadow-[0_0_50px_rgba(0,0,0,0.9),0_0_30px_rgba(245,158,11,0.15)] relative transform transition-all duration-300 my-auto">
+            <div className="absolute -top-px left-12 right-12 h-px bg-gradient-to-r from-transparent via-[#F59E0B] to-transparent shadow-[0_0_10px_#F59E0B]" />
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <h3 className="text-lg font-black text-white flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-[#F59E0B]/15 border border-[#F59E0B]/30 flex items-center justify-center text-[#F59E0B] shadow-inner">
+                  <Edit className="w-5 h-5" />
+                </div>
+                <span>কোর্স সম্পাদনা করুন: {editingCourse.title}</span>
+              </h3>
+              <button
+                onClick={() => setEditingCourse(null)}
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 text-slate-400 hover:text-white flex items-center justify-center transition-all border border-white/10"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditedCourse} className="space-y-4 text-xs max-h-[75vh] overflow-y-auto pr-2">
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">ক্যাটাগরি:</label>
+                <select
+                  value={editingCourse.category}
+                  onChange={(e) =>
+                    setEditingCourse({
+                      ...editingCourse,
+                      category: e.target.value as any,
+                    })
+                  }
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none"
+                >
+                  <option value="defense">ডিফেন্স ও মিলিটারি (BAFA, BMA, BN, ISSB)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">কোর্সের নাম:</label>
+                <input
+                  type="text"
+                  required
+                  value={editingCourse.title}
+                  onChange={(e) =>
+                    setEditingCourse({ ...editingCourse, title: e.target.value })
+                  }
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">ট্যাগলাইন:</label>
+                <input
+                  type="text"
+                  value={editingCourse.tagline}
+                  onChange={(e) =>
+                    setEditingCourse({ ...editingCourse, tagline: e.target.value })
+                  }
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-[#F59E0B] block mb-1">মূল্য (৳):</label>
+                  <input
+                    type="number"
+                    required
+                    value={editingCourse.price}
+                    onChange={(e) =>
+                      setEditingCourse({
+                        ...editingCourse,
+                        price: parseFloat(e.target.value),
+                      })
+                    }
+                    className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-300 block mb-1">আসল মূল্য (৳):</label>
+                  <input
+                    type="number"
+                    value={editingCourse.originalPrice}
+                    onChange={(e) =>
+                      setEditingCourse({
+                        ...editingCourse,
+                        originalPrice: parseFloat(e.target.value),
+                      })
+                    }
+                    className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">ডিটেইল পেজ ফরম্যাট:</label>
+                <select
+                  value={editingCourse.detailLayout || "standard"}
+                  onChange={(e) =>
+                    setEditingCourse({
+                      ...editingCourse,
+                      detailLayout: e.target.value as any,
+                    })
+                  }
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none"
+                >
+                  <option value="standard">Standard Split Layout</option>
+                  <option value="video_hero">Video-Focused Hero Layout</option>
+                  <option value="modern_split">Modern Tabbed Layout</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">ভিডিও লিংক (YouTube / Vimeo):</label>
+                <input
+                  type="url"
+                  value={editingCourse.videoUrl || ""}
+                  onChange={(e) =>
+                    setEditingCourse({ ...editingCourse, videoUrl: e.target.value })
+                  }
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">ছবি URL:</label>
+                <input
+                  type="text"
+                  value={editingCourse.imageUrl || ""}
+                  onChange={(e) =>
+                    setEditingCourse({ ...editingCourse, imageUrl: e.target.value })
+                  }
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">বিবরণ (Description):</label>
+                <textarea
+                  rows={4}
+                  value={editingCourse.description || ""}
+                  onChange={(e) =>
+                    setEditingCourse({ ...editingCourse, description: e.target.value })
+                  }
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">ফিচারসমূহ (প্রতি লাইনে একটি):</label>
+                <textarea
+                  rows={3}
+                  value={editFeaturesInput}
+                  onChange={(e) => setEditFeaturesInput(e.target.value)}
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">মেন্টরদের নাম (কমা দিয়ে পৃথক):</label>
+                <input
+                  type="text"
+                  value={editInstructorsInput}
+                  onChange={(e) => setEditInstructorsInput(e.target.value)}
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingCourse(null)}
+                  className="w-1/2 py-3 bg-white/5 border border-white/10 text-white rounded-xl font-bold"
+                >
+                  বাতিল করুন
+                </button>
+                <button
+                  type="submit"
+                  className="w-1/2 py-3 bg-[#F59E0B] text-black font-bold rounded-xl hover:brightness-110"
+                >
+                  পরিবর্তন সেভ করুন
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT STORY MODAL */}
+      {editingStory && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-gradient-to-b from-[#0F2644] to-[#08182D] border border-[#F59E0B]/30 rounded-3xl p-6 sm:p-7 max-w-lg w-full space-y-4 shadow-[0_0_50px_rgba(0,0,0,0.9),0_0_30px_rgba(245,158,11,0.15)] relative transform transition-all duration-300 my-auto">
+            <div className="absolute -top-px left-12 right-12 h-px bg-gradient-to-r from-transparent via-[#F59E0B] to-transparent shadow-[0_0_10px_#F59E0B]" />
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <h3 className="text-lg font-black text-white flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-[#F59E0B]/15 border border-[#F59E0B]/30 flex items-center justify-center text-[#F59E0B] shadow-inner">
+                  <Edit className="w-5 h-5" />
+                </div>
+                <span>সাকসেস স্টোরি সম্পাদনা: {editingStory.name}</span>
+              </h3>
+              <button
+                onClick={() => setEditingStory(null)}
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 text-slate-400 hover:text-white flex items-center justify-center transition-all border border-white/10"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditedStory} className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">ক্যাটাগরি:</label>
+                <select
+                  value={editingStory.category || "bafa"}
+                  onChange={(e) => setEditingStory({ ...editingStory, category: e.target.value as any })}
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none"
+                >
+                  <option value="bafa">BAFA (বিমান বাহিনী)</option>
+                  <option value="bma">BMA (সেনাবাহিনী)</option>
+                  <option value="bn">BN (নৌবাহিনী)</option>
+                  <option value="issb">ISSB (গ্রিন কার্ড)</option>
+                  <option value="general">সাধারণ মেধা</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">শিক্ষার্থীর নাম:</label>
+                <input
+                  type="text"
+                  required
+                  value={editingStory.name}
+                  onChange={(e) => setEditingStory({ ...editingStory, name: e.target.value })}
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">মেধা স্থান/র‍্যাংক:</label>
+                <input
+                  type="text"
+                  required
+                  value={editingStory.rank}
+                  onChange={(e) => setEditingStory({ ...editingStory, rank: e.target.value })}
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">প্রতিষ্ঠানের নাম:</label>
+                <input
+                  type="text"
+                  required
+                  value={editingStory.institution}
+                  onChange={(e) => setEditingStory({ ...editingStory, institution: e.target.value })}
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">উক্তি (Quote):</label>
+                <textarea
+                  rows={3}
+                  value={editingStory.quote}
+                  onChange={(e) => setEditingStory({ ...editingStory, quote: e.target.value })}
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingStory(null)}
+                  className="w-1/2 py-3 bg-white/5 border border-white/10 text-white rounded-xl font-bold"
+                >
+                  বাতিল
+                </button>
+                <button
+                  type="submit"
+                  className="w-1/2 py-3 bg-[#F59E0B] text-[#000000] font-bold rounded-xl hover:brightness-110"
+                >
+                  সেভ করুন
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
