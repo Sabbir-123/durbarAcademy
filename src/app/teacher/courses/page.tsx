@@ -10,6 +10,7 @@ import {
   saveCourse,
   deleteCourseStore,
   subscribeCoursesStore,
+  syncCoursesFromSupabase,
 } from "@/utils/courseStore";
 import {
   BookOpen,
@@ -28,7 +29,7 @@ import {
   Tag,
 } from "lucide-react";
 import Link from "next/link";
-import { getCurrentUser } from "@/utils/userStore";
+import { getCurrentUser, getStoredUsers, isSuperAdminEmail } from "@/utils/userStore";
 
 export default function TeacherCoursesPage() {
   const [profile, setProfile] = useState<any>(null);
@@ -44,6 +45,9 @@ export default function TeacherCoursesPage() {
 
   useEffect(() => {
     async function loadUser() {
+      const synced = await syncCoursesFromSupabase();
+      setCourses(synced);
+
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -69,14 +73,69 @@ export default function TeacherCoursesPage() {
   }, []);
 
   const currentUser = getCurrentUser();
-  const currentTeacherEmail = (profile?.email || userEmail || currentUser?.email || "").trim().toLowerCase();
+  const allUsers = typeof window !== "undefined" ? getStoredUsers() : [];
 
-  // Filter courses assigned to this teacher (or open if no assignment)
+  // Try to resolve exact teacher user from stored users list using full_name or email
+  const teacherName = (profile?.full_name || currentUser?.full_name || "").trim().toLowerCase();
+  const teacherEmailFromStore = allUsers.find(
+    (u) =>
+      (teacherName && u.full_name.trim().toLowerCase() === teacherName) ||
+      (profile?.id && u.id === profile.id)
+  )?.email;
+
+  const currentTeacherEmail = (
+    teacherEmailFromStore ||
+    userEmail ||
+    currentUser?.email ||
+    profile?.email ||
+    ""
+  ).trim().toLowerCase();
+
+  const isUserAdmin =
+    profile?.role?.toLowerCase().includes("admin") ||
+    currentUser?.role?.toLowerCase().includes("admin") ||
+    isSuperAdminEmail(currentTeacherEmail);
+
+  // Filter courses assigned to this teacher
   const displayCourses = courses.filter((c) => {
+    // Admins see all courses
+    if (isUserAdmin) return true;
+
+    // If course has specific teacher emails assigned
     if (c.teacherEmails && c.teacherEmails.length > 0) {
-      if (!currentTeacherEmail) return false;
-      return c.teacherEmails.some((e) => e.trim().toLowerCase() === currentTeacherEmail);
+      // 1. Direct Email match in course.teacherEmails
+      if (
+        currentTeacherEmail &&
+        c.teacherEmails.some((e) => e.trim().toLowerCase() === currentTeacherEmail)
+      ) {
+        return true;
+      }
+
+      // 2. Name match in instructors list
+      if (teacherName && c.instructors && c.instructors.length > 0) {
+        const nameMatch = c.instructors.some(
+          (inst) =>
+            inst.toLowerCase().includes(teacherName) || teacherName.includes(inst.toLowerCase())
+        );
+        if (nameMatch) return true;
+      }
+
+      // 3. UserStore lookup match (if teacherName matches a user whose email is in teacherEmails)
+      if (teacherName) {
+        const matchedUser = allUsers.find((u) => u.full_name.trim().toLowerCase() === teacherName);
+        if (
+          matchedUser &&
+          c.teacherEmails.some((e) => e.trim().toLowerCase() === matchedUser.email.trim().toLowerCase())
+        ) {
+          return true;
+        }
+      }
+
+      // Hide if assigned to other teachers and no match found
+      if (currentTeacherEmail || teacherName) return false;
     }
+
+    // Courses with no assigned teacherEmails specified are open to all teachers
     return true;
   });
 

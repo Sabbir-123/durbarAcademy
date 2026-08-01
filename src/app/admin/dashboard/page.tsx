@@ -10,6 +10,7 @@ import {
   saveCourse,
   deleteCourseStore,
   subscribeCoursesStore,
+  syncCoursesFromSupabase,
 } from "@/utils/courseStore";
 import { StudentSuccess } from "@/data/testimonials";
 import {
@@ -242,6 +243,9 @@ export default function AdminDashboard() {
     setAuditLogs(getStoredAuditLogs());
 
     async function loadData() {
+      const synced = await syncCoursesFromSupabase();
+      setCourses(synced);
+
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -634,7 +638,7 @@ export default function AdminDashboard() {
 
     try {
       await deleteCourseStore(courseId);
-      setCourses(getStoredCourses());
+      setCourses((prev) => prev.filter((c) => c.id !== courseId && (c as any).slug !== courseId));
       await logAuditAction(
         "কোর্স মুছে ফেলা (Delete)",
         `কোর্স "${title}" (ID: ${courseId}) সিস্টেম থেকে মুছে ফেলা হয়েছে।`

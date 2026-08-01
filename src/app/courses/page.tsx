@@ -7,7 +7,7 @@ import RegistrationModal from "@/components/RegistrationModal";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Course } from "@/data/courses";
-import { getStoredCourses, subscribeCoursesStore } from "@/utils/courseStore";
+import { getStoredCourses, subscribeCoursesStore, syncCoursesFromSupabase } from "@/utils/courseStore";
 import {
   Search,
   Sparkles,
@@ -26,7 +26,12 @@ export default function CoursesPage() {
   const [registerInitialCourseId, setRegisterInitialCourseId] = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    setCourses(getStoredCourses().filter((c) => c.published !== false));
+    async function loadData() {
+      const dbCourses = await syncCoursesFromSupabase();
+      setCourses(dbCourses.filter((c) => c.published !== false));
+    }
+    loadData();
+
     const unsubscribe = subscribeCoursesStore(() => {
       setCourses(getStoredCourses().filter((c) => c.published !== false));
     });

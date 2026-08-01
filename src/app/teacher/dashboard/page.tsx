@@ -9,8 +9,8 @@ import {
   getStoredSuccessStories,
   subscribeSuccessStoriesStore,
 } from "@/utils/successStoryStore";
-import { getStoredCourses, subscribeCoursesStore } from "@/utils/courseStore";
-import { getCurrentUser } from "@/utils/userStore";
+import { getStoredCourses, subscribeCoursesStore, syncCoursesFromSupabase } from "@/utils/courseStore";
+import { getCurrentUser, getStoredUsers, isSuperAdminEmail } from "@/utils/userStore";
 import {
   BookOpen,
   Users,
@@ -37,14 +37,60 @@ export default function TeacherDashboard() {
       setSuccessStories(getStoredSuccessStories());
     });
 
-    function calculateAssignedCourses(profEmail?: string, authEmail?: string) {
+    function calculateAssignedCourses(profEmail?: string, authEmail?: string, profFullName?: string) {
       const curr = getCurrentUser();
-      const teacherEmail = (profEmail || authEmail || curr?.email || "").trim().toLowerCase();
+      const allUsers = typeof window !== "undefined" ? getStoredUsers() : [];
+
+      const teacherName = (profFullName || profile?.full_name || curr?.full_name || "").trim().toLowerCase();
+      const teacherEmailFromStore = allUsers.find(
+        (u) =>
+          (teacherName && u.full_name.trim().toLowerCase() === teacherName) ||
+          (profile?.id && u.id === profile.id)
+      )?.email;
+
+      const teacherEmail = (
+        teacherEmailFromStore ||
+        profEmail ||
+        authEmail ||
+        curr?.email ||
+        profile?.email ||
+        ""
+      ).trim().toLowerCase();
+
+      const isUserAdmin =
+        profile?.role?.toLowerCase().includes("admin") ||
+        curr?.role?.toLowerCase().includes("admin") ||
+        isSuperAdminEmail(teacherEmail);
+
       const allCourses = getStoredCourses();
       const assigned = allCourses.filter((c) => {
+        if (isUserAdmin) return true;
         if (c.teacherEmails && c.teacherEmails.length > 0) {
-          if (!teacherEmail) return false;
-          return c.teacherEmails.some((e) => e.trim().toLowerCase() === teacherEmail);
+          // 1. Direct Email match
+          if (teacherEmail && c.teacherEmails.some((e) => e.trim().toLowerCase() === teacherEmail)) {
+            return true;
+          }
+
+          // 2. Name match in instructors
+          if (teacherName && c.instructors && c.instructors.length > 0) {
+            const nameMatch = c.instructors.some((inst) =>
+              inst.toLowerCase().includes(teacherName) || teacherName.includes(inst.toLowerCase())
+            );
+            if (nameMatch) return true;
+          }
+
+          // 3. UserStore lookup match
+          if (teacherName) {
+            const matchedUser = allUsers.find((u) => u.full_name.trim().toLowerCase() === teacherName);
+            if (
+              matchedUser &&
+              c.teacherEmails.some((e) => e.trim().toLowerCase() === matchedUser.email.trim().toLowerCase())
+            ) {
+              return true;
+            }
+          }
+
+          if (teacherEmail || teacherName) return false;
         }
         return true;
       });
@@ -58,6 +104,9 @@ export default function TeacherDashboard() {
     });
 
     async function loadData() {
+      await syncCoursesFromSupabase();
+      calculateAssignedCourses();
+
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -68,7 +117,7 @@ export default function TeacherDashboard() {
           .eq("id", user.id)
           .single();
         setProfile(prof);
-        calculateAssignedCourses(prof?.email, user.email);
+        calculateAssignedCourses(prof?.email, user?.email, prof?.full_name);
       }
     }
     loadData();

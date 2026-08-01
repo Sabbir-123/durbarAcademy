@@ -7,7 +7,7 @@ import Footer from "@/components/Footer";
 import RegistrationModal from "@/components/RegistrationModal";
 import { motion, AnimatePresence } from "framer-motion";
 import { Course } from "@/data/courses";
-import { getCourseById, subscribeCoursesStore } from "@/utils/courseStore";
+import { getCourseById, subscribeCoursesStore, syncCoursesFromSupabase } from "@/utils/courseStore";
 import {
   Sparkles,
   Clock,
@@ -34,8 +34,13 @@ export default function CourseDetailView({ courseId }: CourseDetailViewProps) {
   const [openSyllabusIndex, setOpenSyllabusIndex] = useState<number | null>(0);
 
   useEffect(() => {
-    const found = getCourseById(courseId);
-    if (found) setCourse(found);
+    async function loadCourse() {
+      await syncCoursesFromSupabase();
+      const found = getCourseById(courseId);
+      if (found) setCourse(found);
+    }
+    loadCourse();
+
     const unsub = subscribeCoursesStore(() => {
       const updated = getCourseById(courseId);
       if (updated) setCourse(updated);

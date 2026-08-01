@@ -1,3 +1,5 @@
+import { createClient } from "@/utils/supabase/client";
+
 export interface AppUser {
   id: string;
   full_name: string;
@@ -68,6 +70,39 @@ export function isUserDeleted(userId: string): boolean {
   return getDeletedIds().has(userId);
 }
 // ────────────────────────────────────────────────────────────────────────────
+
+export async function fetchUsersFromDatabase(): Promise<AppUser[]> {
+  if (typeof window === "undefined") return getStoredUsers();
+  try {
+    const supabase = createClient();
+    const { data: profilesData, error } = await supabase.from("profiles").select(`
+      id,
+      email,
+      full_name,
+      user_roles (
+        role
+      )
+    `);
+
+    if (error || !profilesData || profilesData.length === 0) {
+      return getStoredUsers();
+    }
+
+    const dbUsers: AppUser[] = profilesData.map((p: any) => ({
+      id: p.id,
+      email: p.email,
+      full_name: p.full_name || p.email?.split("@")[0] || "User",
+      role: p.user_roles?.role || (isSuperAdminEmail(p.email) ? "Super Admin" : "student"),
+    }));
+
+    for (const u of dbUsers) {
+      saveUserStore(u);
+    }
+    return getStoredUsers();
+  } catch (err) {
+    return getStoredUsers();
+  }
+}
 
 export function getStoredUsers(): AppUser[] {
   if (typeof window === "undefined") return DEFAULT_USERS;

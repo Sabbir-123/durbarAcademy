@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { motion, Variants } from "framer-motion";
 import { Course } from "@/data/courses";
-import { getStoredCourses, subscribeCoursesStore } from "@/utils/courseStore";
+import { getStoredCourses, subscribeCoursesStore, syncCoursesFromSupabase } from "@/utils/courseStore";
 import {
   ChevronLeft,
   ChevronRight,
@@ -28,7 +28,12 @@ export default function CoursesSliderSection({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setCourses(getStoredCourses().filter((c) => c.published !== false));
+    async function loadData() {
+      const dbCourses = await syncCoursesFromSupabase();
+      setCourses(dbCourses.filter((c) => c.published !== false));
+    }
+    loadData();
+
     const unsubscribe = subscribeCoursesStore(() => {
       setCourses(getStoredCourses().filter((c) => c.published !== false));
     });
