@@ -27,6 +27,25 @@ export function isSuperAdminEmail(email: string): boolean {
   return email.trim().toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
 }
 
+export function getCurrentUser(): AppUser | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem("durbar_current_user");
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setCurrentUser(user: AppUser | null): void {
+  if (typeof window === "undefined") return;
+  if (!user) {
+    localStorage.removeItem("durbar_current_user");
+  } else {
+    localStorage.setItem("durbar_current_user", JSON.stringify(user));
+  }
+}
+
 // ── Deleted-user blocklist helpers ──────────────────────────────────────────
 function getDeletedIds(): Set<string> {
   if (typeof window === "undefined") return new Set();

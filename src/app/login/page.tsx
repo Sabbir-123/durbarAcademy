@@ -9,7 +9,7 @@ import {
   UserX, KeyRound, Eye, EyeOff, MailCheck, RefreshCw
 } from "lucide-react";
 import { SITE_CONFIG } from "@/config/siteConfig";
-import { getStoredUsers } from "@/utils/userStore";
+import { getStoredUsers, setCurrentUser } from "@/utils/userStore";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -17,8 +17,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errorType, setErrorType] = useState<
-    "not_found" | "invalid_password" | "email_not_confirmed" | "general"
-  >("general");
+    "not_found" | "invalid_password" | "email_not_confirmed" | "general" | null
+  >(null);
   const [showPassword, setShowPassword] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
@@ -30,7 +30,7 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    setErrorType("general");
+    setErrorType(null);
     setResendSuccess(false);
 
     const trimmedEmail = email.trim().toLowerCase();
@@ -52,6 +52,14 @@ export default function LoginPage() {
 
         let role = (roleData?.role || "student").toLowerCase();
         if (role.includes("admin")) role = "admin";
+
+        setCurrentUser({
+          id: user.id,
+          full_name: user.user_metadata?.full_name || trimmedEmail.split("@")[0],
+          email: trimmedEmail,
+          role: role,
+        });
+
         router.push(`/${role}/dashboard`);
         return;
       }
@@ -110,6 +118,7 @@ export default function LoginPage() {
       role = "student";
     }
 
+    setCurrentUser(foundUser);
     router.push(`/${role}/dashboard`);
   };
 

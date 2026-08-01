@@ -9,7 +9,8 @@ import {
   getStoredSuccessStories,
   subscribeSuccessStoriesStore,
 } from "@/utils/successStoryStore";
-import { getStoredCourses } from "@/utils/courseStore";
+import { getStoredCourses, subscribeCoursesStore } from "@/utils/courseStore";
+import { getCurrentUser } from "@/utils/userStore";
 import {
   BookOpen,
   Users,
@@ -32,35 +33,50 @@ export default function TeacherDashboard() {
   useEffect(() => {
     setSuccessStories(getStoredSuccessStories());
 
-    const unsub = subscribeSuccessStoriesStore(() => {
+    const unsubStories = subscribeSuccessStoriesStore(() => {
       setSuccessStories(getStoredSuccessStories());
+    });
+
+    function calculateAssignedCourses(profEmail?: string, authEmail?: string) {
+      const curr = getCurrentUser();
+      const teacherEmail = (profEmail || authEmail || curr?.email || "").trim().toLowerCase();
+      const allCourses = getStoredCourses();
+      const assigned = allCourses.filter((c) => {
+        if (c.teacherEmails && c.teacherEmails.length > 0) {
+          if (!teacherEmail) return false;
+          return c.teacherEmails.some((e) => e.trim().toLowerCase() === teacherEmail);
+        }
+        return true;
+      });
+      setCoursesCount(assigned.length);
+    }
+
+    calculateAssignedCourses();
+
+    const unsubCourses = subscribeCoursesStore(() => {
+      calculateAssignedCourses();
     });
 
     async function loadData() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: prof } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
-      setProfile(prof);
-
-      const email = prof?.email || user.email;
-      const allCourses = getStoredCourses();
-      const assigned = allCourses.filter((c) => {
-        if (!c.teacherEmails || c.teacherEmails.length === 0) return true;
-        if (!email) return true;
-        return c.teacherEmails.some((e) => e.toLowerCase() === email.toLowerCase());
-      });
-      setCoursesCount(assigned.length);
+      if (user) {
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
+          .single();
+        setProfile(prof);
+        calculateAssignedCourses(prof?.email, user.email);
+      }
     }
     loadData();
 
-    return () => unsub();
+    return () => {
+      unsubStories();
+      unsubCourses();
+    };
   }, []);
 
   return (

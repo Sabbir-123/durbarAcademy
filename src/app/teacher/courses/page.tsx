@@ -28,6 +28,7 @@ import {
   Tag,
 } from "lucide-react";
 import Link from "next/link";
+import { getCurrentUser } from "@/utils/userStore";
 
 export default function TeacherCoursesPage() {
   const [profile, setProfile] = useState<any>(null);
@@ -46,16 +47,16 @@ export default function TeacherCoursesPage() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) return;
+      if (user) {
+        setUserEmail(user.email || "");
 
-      setUserEmail(user.email || "");
-
-      const { data: prof } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
-      setProfile(prof);
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
+          .single();
+        setProfile(prof);
+      }
     }
     loadUser();
 
@@ -67,13 +68,16 @@ export default function TeacherCoursesPage() {
     return () => unsub();
   }, []);
 
-  const currentTeacherEmail = profile?.email || userEmail;
+  const currentUser = getCurrentUser();
+  const currentTeacherEmail = (profile?.email || userEmail || currentUser?.email || "").trim().toLowerCase();
 
   // Filter courses assigned to this teacher (or open if no assignment)
   const displayCourses = courses.filter((c) => {
-    if (!c.teacherEmails || c.teacherEmails.length === 0) return true;
-    if (!currentTeacherEmail) return true;
-    return c.teacherEmails.some((e) => e.toLowerCase() === currentTeacherEmail.toLowerCase());
+    if (c.teacherEmails && c.teacherEmails.length > 0) {
+      if (!currentTeacherEmail) return false;
+      return c.teacherEmails.some((e) => e.trim().toLowerCase() === currentTeacherEmail);
+    }
+    return true;
   });
 
   const handleOpenAdd = () => {
