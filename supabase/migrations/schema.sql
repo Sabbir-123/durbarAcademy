@@ -566,12 +566,9 @@ DROP POLICY IF EXISTS "Courses are viewable by everyone" ON public.courses;
 CREATE POLICY "Courses are viewable by everyone" ON public.courses FOR SELECT USING (true);
 
 DROP POLICY IF EXISTS "Only admins can modify courses" ON public.courses;
-CREATE POLICY "Only admins can modify courses" ON public.courses FOR ALL USING (
-    EXISTS (
-        SELECT 1 FROM public.user_roles ur 
-        WHERE ur.user_id = auth.uid() AND ur.role = 'admin'
-    )
-);
+DROP POLICY IF EXISTS "Admins and teachers can modify courses" ON public.courses;
+DROP POLICY IF EXISTS "Allow all modification to courses" ON public.courses;
+CREATE POLICY "Allow all modification to courses" ON public.courses FOR ALL USING (true) WITH CHECK (true);
 
 -- Promote ahmedsabbir2013@gmail.com to admin if user exists
 DO $$

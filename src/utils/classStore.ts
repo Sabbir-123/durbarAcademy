@@ -46,6 +46,7 @@ export interface Milestone {
 
 export interface Batch {
   id: string;
+  courseId?: string;
   title: string;
   description: string;
   startDate: string;
@@ -89,8 +90,10 @@ function uid(): string {
 }
 
 // ── BATCHES ───────────────────────────────────────────────────────────────────
-export function getBatches(): Batch[] {
-  return read<Batch>(KEYS.batches);
+export function getBatches(courseId?: string): Batch[] {
+  const all = read<Batch>(KEYS.batches);
+  if (!courseId) return all;
+  return all.filter((b) => !b.courseId || b.courseId === courseId);
 }
 
 export function saveBatch(data: Omit<Batch, "id" | "createdAt"> & { id?: string }): Batch {

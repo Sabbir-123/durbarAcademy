@@ -12,11 +12,14 @@ import {
   getClasses, saveClass, deleteClass,
   toYouTubeEmbedUrl, subscribeClassStore,
 } from "@/utils/classStore";
+import { Course } from "@/data/courses";
+import { getStoredCourses, syncCoursesFromSupabase } from "@/utils/courseStore";
+import { getCurrentUser, getStoredUsers, isSuperAdminEmail } from "@/utils/userStore";
 import {
   Video, Plus, Edit, Trash2, X, ChevronRight,
   BookOpen, Layers, Target, PlayCircle,
   HelpCircle, ArrowLeft, Save,
-  ClipboardList, ToggleLeft,
+  ClipboardList, ToggleLeft, CheckCircle2,
 } from "lucide-react";
 
 // ─── Shared input/textarea/select styles ─────────────────────────────────────
@@ -227,6 +230,10 @@ export default function TeacherClassesPage() {
   const supabase = createClient();
   const [profile, setProfile] = useState<any>(null);
 
+  // ── Course selection state ──────────────────────────────────────────────────
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [selCourse, setSelCourse] = useState<Course | null>(null);
+
   // ── Data state ──────────────────────────────────────────────────────────────
   const [batches, setBatches] = useState<Batch[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
@@ -250,11 +257,15 @@ export default function TeacherClassesPage() {
 
   // ── Refresh ─────────────────────────────────────────────────────────────────
   const refresh = useCallback(() => {
-    setBatches(getBatches());
+    if (selCourse) {
+      setBatches(getBatches(selCourse.id));
+    } else {
+      setBatches([]);
+    }
     if (selBatch) setMilestones(getMilestones(selBatch.id));
     if (selMilestone) setModules(getModules(selMilestone.id));
     if (selModule) setClasses(getClasses(selModule.id));
-  }, [selBatch, selMilestone, selModule]);
+  }, [selCourse, selBatch, selMilestone, selModule]);
 
   useEffect(() => {
     refresh();
@@ -263,16 +274,45 @@ export default function TeacherClassesPage() {
   }, [refresh]);
 
   useEffect(() => {
-    const supabaseClient = supabase;
-    supabaseClient.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return;
-      supabaseClient.from("profiles").select("*").eq("id", user.id).single()
-        .then(({ data }) => setProfile(data));
-    });
+    async function loadTeacherCourses() {
+      const dbCourses = await syncCoursesFromSupabase();
+      const { data: { user } } = await supabase.auth.getUser();
+      let prof: any = null;
+      if (user) {
+        const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+        prof = data;
+        setProfile(data);
+      }
+
+      const currentUser = getCurrentUser();
+      const teacherName = prof?.full_name || currentUser?.full_name || "";
+      const userStoreMatch = getStoredUsers().find(
+        (u) => u.id === prof?.id || u.full_name?.toLowerCase() === teacherName.toLowerCase()
+      );
+      const teacherEmailFromStore = userStoreMatch?.email || "";
+      const userEmail = user?.email || teacherEmailFromStore || currentUser?.email || "";
+
+      const isAdmin = isSuperAdminEmail(userEmail) || prof?.email === "ahmedsabbir2013@gmail.com";
+
+      let assigned: Course[] = [];
+      if (isAdmin) {
+        assigned = dbCourses;
+      } else {
+        assigned = dbCourses.filter((c) => {
+          if (c.teacherEmails && userEmail && c.teacherEmails.includes(userEmail)) return true;
+          if (c.teacherEmails && teacherEmailFromStore && c.teacherEmails.includes(teacherEmailFromStore)) return true;
+          if (c.instructors && teacherName && c.instructors.some((inst) => inst.toLowerCase() === teacherName.toLowerCase())) return true;
+          return false;
+        });
+      }
+
+      setCourses(assigned);
+    }
+    loadTeacherCourses();
   }, []);
 
   // ── Level: Batch handlers ────────────────────────────────────────────────────
-  const openAddBatch = () => { setEditingBatch({ status: "upcoming" }); setModal("batch"); };
+  const openAddBatch = () => { setEditingBatch({ courseId: selCourse?.id, status: "upcoming" }); setModal("batch"); };
   const openEditBatch = (b: Batch) => { setEditingBatch({ ...b }); setModal("batch"); };
   const submitBatch = () => {
     if (!editingBatch.title?.trim()) return alert("ব্যাচের নাম প্রয়োজন।");
@@ -321,7 +361,8 @@ export default function TeacherClassesPage() {
   const level = selModule ? "classes" : selMilestone ? "modules" : selBatch ? "milestones" : "batches";
 
   const breadcrumb = [
-    { label: "ব্যাচসমূহ", onClick: () => { setSelBatch(null); setSelMilestone(null); setSelModule(null); } },
+    { label: "কোর্সসমূহ", onClick: () => { setSelCourse(null); setSelBatch(null); setSelMilestone(null); setSelModule(null); } },
+    ...(selCourse ? [{ label: `কোর্স: ${selCourse.title}`, onClick: () => { setSelBatch(null); setSelMilestone(null); setSelModule(null); } }] : []),
     ...(selBatch ? [{ label: selBatch.title, onClick: () => { setSelMilestone(null); setSelModule(null); } }] : []),
     ...(selMilestone ? [{ label: selMilestone.title, onClick: () => setSelModule(null) }] : []),
     ...(selModule ? [{ label: selModule.title, onClick: () => {} }] : []),
@@ -344,19 +385,64 @@ export default function TeacherClassesPage() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
           <div className="space-y-1">
             <span className="text-xs font-bold text-[#FACC15] uppercase tracking-wider">ক্লাস ম্যানেজার</span>
-            <h1 className="text-2xl font-extrabold text-white">ব্যাচ · মাইলস্টোন · মডিউল · ক্লাস</h1>
-            <p className="text-xs text-slate-400">ব্যাচ তৈরি করুন, মাইলস্টোন ও মডিউল সাজান, ইউটিউব ক্লাস ও পরীক্ষা যোগ করুন।</p>
+            <h1 className="text-2xl font-extrabold text-white">কোর্স · ব্যাচ · মাইলস্টোন · মডিউল · ক্লাস</h1>
+            <p className="text-xs text-slate-400">প্রথমে কোর্স নির্বাচন করুন, ব্যাচ তৈরি করুন, মাইলস্টোন ও মডিউল সাজিয়ে ইউটিউব ক্লাস ও পরীক্ষা প্রকাশ করুন।</p>
           </div>
           <DashboardHeader role="teacher" />
+        </div>
+
+        {/* Course Selector Toolbar */}
+        <div className="bg-[#0D2038] border border-[#F59E0B]/30 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#F59E0B]/10 border border-[#F59E0B]/30 flex items-center justify-center text-[#F59E0B] shrink-0">
+              <BookOpen className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">বর্তমানে নির্বাচিত কোর্স:</span>
+              <h2 className="text-sm font-black text-white flex items-center gap-2">
+                {selCourse ? (
+                  <>
+                    <span className="text-[#FACC15]">{selCourse.title}</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#F59E0B]/20 text-[#FACC15] font-bold">
+                      {selCourse.categoryLabel}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-slate-400 font-normal">কোনো কোর্স নির্বাচন করা হয়নি</span>
+                )}
+              </h2>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <select
+              value={selCourse?.id || ""}
+              onChange={(e) => {
+                const found = courses.find((c) => c.id === e.target.value);
+                setSelCourse(found || null);
+                setSelBatch(null);
+                setSelMilestone(null);
+                setSelModule(null);
+              }}
+              className="w-full sm:w-auto bg-[#07182E] border border-[#F59E0B]/40 text-[#FACC15] font-bold text-xs rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-[#F59E0B] cursor-pointer"
+            >
+              <option value="">— পছন্দমতো কোর্স বেছে নিন ({courses.length} টি) —</option>
+              {courses.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.title}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
-            { label: "মোট ব্যাচ", val: getBatches().length, color: "text-[#F59E0B]", icon: BookOpen },
-            { label: "মাইলস্টোন", val: getMilestones().length, color: "text-violet-400", icon: Target },
-            { label: "মডিউল", val: getModules().length, color: "text-emerald-400", icon: Layers },
-            { label: "ক্লাস / লেসন", val: getClasses().length, color: "text-sky-400", icon: PlayCircle },
+            { label: "মোট ব্যাচ", val: batches.length, color: "text-[#F59E0B]", icon: BookOpen },
+            { label: "মাইলস্টোন", val: milestones.length, color: "text-violet-400", icon: Target },
+            { label: "মডিউল", val: modules.length, color: "text-emerald-400", icon: Layers },
+            { label: "ক্লাস / লেসন", val: classes.length, color: "text-sky-400", icon: PlayCircle },
           ].map((s) => (
             <div key={s.label} className="bg-[#0D2038] border border-white/10 rounded-2xl p-4 flex items-center justify-between">
               <div>
@@ -369,7 +455,7 @@ export default function TeacherClassesPage() {
         </div>
 
         {/* Breadcrumb */}
-        {selBatch && (
+        {selCourse && (
           <div className="flex items-center gap-3 bg-[#0D2038] border border-white/10 rounded-2xl px-4 py-3">
             <button onClick={() => { setSelBatch(null); setSelMilestone(null); setSelModule(null); }}
               className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300">
@@ -379,8 +465,55 @@ export default function TeacherClassesPage() {
           </div>
         )}
 
+        {/* If no course selected, show course selector cards */}
+        {!selCourse && (
+          <div className="space-y-4 py-6">
+            <div className="text-center max-w-xl mx-auto space-y-2">
+              <h3 className="text-lg font-extrabold text-white">আপনার কোর্স নির্বাচন করুন</h3>
+              <p className="text-xs text-slate-400">
+                ক্লাস ও ব্যাচ পরিচালনা শুরু করতে নিচে প্রদর্শিত আপনার অ্যাসাইন করা কোর্সগুলোর মধ্য থেকে একটি বেছে নিন।
+              </p>
+            </div>
+
+            {courses.length === 0 ? (
+              <div className="text-center py-12 bg-[#0D2038] border border-dashed border-white/10 rounded-2xl">
+                <p className="text-xs text-slate-400">আপনাকে এখনো কোনো কোর্সে অ্যাসাইন করা হয়নি।</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {courses.map((c) => (
+                  <div
+                    key={c.id}
+                    onClick={() => {
+                      setSelCourse(c);
+                      setSelBatch(null);
+                      setSelMilestone(null);
+                      setSelModule(null);
+                    }}
+                    className="bg-[#0D2038] border border-white/10 hover:border-[#F59E0B] rounded-2xl p-5 cursor-pointer transition-all hover:scale-[1.01] space-y-3 group"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#F59E0B]/10 text-[#FACC15] border border-[#F59E0B]/20">
+                        {c.categoryLabel}
+                      </span>
+                      <span className="text-xs font-bold text-slate-400">৳{c.price}</span>
+                    </div>
+                    <h4 className="text-sm font-bold text-white group-hover:text-[#FACC15] transition-colors">
+                      {c.title}
+                    </h4>
+                    <p className="text-xs text-slate-400 line-clamp-2">{c.tagline}</p>
+                    <button className="w-full py-2.5 bg-[#F59E0B]/10 text-[#FACC15] group-hover:bg-[#F59E0B] group-hover:text-black font-bold text-xs rounded-xl transition-all">
+                      ব্যাচ ও পাঠ্যসূচি সাজান →
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ── LEVEL 1: BATCHES ─────────────────────────────────────────────────── */}
-        {level === "batches" && (
+        {selCourse && level === "batches" && (
           <section className="bg-[#0D2038] border border-white/10 rounded-3xl p-6">
             <SectionHeader icon={BookOpen} title="ব্যাচসমূহ" color="text-[#F59E0B]"
               count={batches.length} onAdd={openAddBatch} />

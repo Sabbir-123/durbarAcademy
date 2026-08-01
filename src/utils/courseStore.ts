@@ -83,7 +83,7 @@ export async function fetchCoursesFromDatabase(): Promise<Course[]> {
         features: extraData.features || ["লাইভ ও ওএমআর এক্সাম", "পিডিএফ নোটস"],
         instructors: extraData.instructors || ["অভিজ্ঞ মেন্টর প্যানেল"],
         teacherEmails: extraData.teacherEmails || [],
-        syllabus: extraData.syllabus || [],
+        syllabus: Array.isArray(extraData.syllabus) ? extraData.syllabus : [],
         published: item.is_published ?? extraData.published ?? true,
       };
     });
@@ -115,45 +115,45 @@ export async function saveCourse(courseData: Partial<Course> & { title: string; 
   const supabase = createClient();
   const courseId = courseData.id || courseData.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
+  const existingCourses = getStoredCourses();
+  const existing = existingCourses.find((c) => c.id === courseId || (c as any).slug === courseId);
+
   const fullCourse: Course = {
     id: courseId,
-    category: (courseData.category as any) || "defense",
-    categoryLabel: courseData.categoryLabel || "ডিফেন্স ও মিলিটারি",
-    title: courseData.title,
-    tagline: courseData.tagline || "প্রিমিয়াম ডিফেন্স ও মিলিটারি প্রোগ্রাম",
-    batchBadge: courseData.batchBadge || "",
-    discountBadge: courseData.discountBadge,
-    price: Number(courseData.price) || 0,
-    originalPrice: Number(courseData.originalPrice) || Number(courseData.price) * 1.4,
-    seatsRemaining: Number(courseData.seatsRemaining) || 25,
-    totalSeats: Number(courseData.totalSeats) || 100,
-    startDate: courseData.startDate || "১৫ আগস্ট, ২০২৬",
-    duration: courseData.duration || "৪ মাস",
-    imageUrl: courseData.imageUrl || "https://images.unsplash.com/photo-1519074069444-1ba4eff56022?auto=format&fit=crop&w=800&q=80",
-    videoUrl: courseData.videoUrl,
-    description: courseData.description || "এই কোর্সের মাধ্যমে শিক্ষার্থীরা বিষয়ভিত্তিক নিখুঁত প্রস্তুতি নিশ্চিত করতে পারবে।",
-    detailLayout: courseData.detailLayout || "standard",
-    sections: courseData.sections || [
-      {
-        id: "s_overview",
-        type: "overview",
-        title: "কোর্স পরিচিতি",
-        content: courseData.description || "কোর্সের বিস্তারিত তথ্য শিগগিরই হালনাগাদ করা হবে।"
-      }
-    ],
-    features: courseData.features && courseData.features.length > 0 ? courseData.features : [
-      "দৈনিক ওএমআর ও সিবিটি এক্সাম",
-      "১-অন-১ মেন্টরশিপ ও ডাউট ক্লিয়ারিং",
-      "পিডিএফ নোটস ও প্র্যাকটিস শিট"
-    ],
-    instructors: courseData.instructors && courseData.instructors.length > 0 ? courseData.instructors : ["অভিজ্ঞ মেন্টর প্যানেল"],
-    teacherEmails: courseData.teacherEmails || [],
-    syllabus: courseData.syllabus && courseData.syllabus.length > 0 ? courseData.syllabus : [
-      { title: "সম্পূর্ণ কোর্স বিষয়ভিত্তিক কভারেজ", lectures: 30, exams: 15 }
-    ],
-    popular: courseData.popular ?? false,
-    published: courseData.published ?? true,
+    category: courseData.category !== undefined ? (courseData.category as any) : (existing?.category || "defense"),
+    categoryLabel: courseData.categoryLabel !== undefined ? courseData.categoryLabel : (existing?.categoryLabel || "ডিফেন্স ও মিলিটারি"),
+    title: courseData.title !== undefined ? courseData.title : (existing?.title || ""),
+    tagline: courseData.tagline !== undefined ? courseData.tagline : (existing?.tagline || "প্রিমিয়াম ডিফেন্স ও মিলিটারি প্রোগ্রাম"),
+    batchBadge: courseData.batchBadge !== undefined ? courseData.batchBadge : (existing?.batchBadge || ""),
+    discountBadge: courseData.discountBadge !== undefined ? courseData.discountBadge : existing?.discountBadge,
+    price: courseData.price !== undefined ? Number(courseData.price) : (existing?.price || 0),
+    originalPrice: courseData.originalPrice !== undefined ? Number(courseData.originalPrice) : (existing?.originalPrice || Number(courseData.price || 0) * 1.4),
+    seatsRemaining: courseData.seatsRemaining !== undefined ? Number(courseData.seatsRemaining) : (existing?.seatsRemaining || 25),
+    totalSeats: courseData.totalSeats !== undefined ? Number(courseData.totalSeats) : (existing?.totalSeats || 100),
+    startDate: courseData.startDate !== undefined ? courseData.startDate : (existing?.startDate || "১৫ আগস্ট, ২০২৬"),
+    duration: courseData.duration !== undefined ? courseData.duration : (existing?.duration || "৪ মাস"),
+    imageUrl: courseData.imageUrl !== undefined ? courseData.imageUrl : (existing?.imageUrl || "https://images.unsplash.com/photo-1519074069444-1ba4eff56022?auto=format&fit=crop&w=800&q=80"),
+    videoUrl: courseData.videoUrl !== undefined ? courseData.videoUrl : existing?.videoUrl,
+    description: courseData.description !== undefined ? courseData.description : (existing?.description || ""),
+    detailLayout: courseData.detailLayout !== undefined ? courseData.detailLayout : (existing?.detailLayout || "standard"),
+    sections: courseData.sections !== undefined ? courseData.sections : (existing?.sections || []),
+    features: courseData.features !== undefined ? courseData.features : (existing?.features || []),
+    instructors: courseData.instructors !== undefined ? courseData.instructors : (existing?.instructors || ["অভিজ্ঞ মেন্টর প্যানেল"]),
+    teacherEmails: courseData.teacherEmails !== undefined ? courseData.teacherEmails : (existing?.teacherEmails || []),
+    syllabus: courseData.syllabus !== undefined ? courseData.syllabus : (existing?.syllabus || []),
+    popular: courseData.popular !== undefined ? courseData.popular : (existing?.popular ?? false),
+    published: courseData.published !== undefined ? courseData.published : (existing?.published ?? true),
   };
+
+  let updatedList: Course[];
+  const existingIdx = existingCourses.findIndex((c) => c.id === courseId || (c as any).slug === courseId);
+  if (existingIdx >= 0) {
+    updatedList = [...existingCourses];
+    updatedList[existingIdx] = fullCourse;
+  } else {
+    updatedList = [fullCourse, ...existingCourses];
+  }
+  setStoredCourses(updatedList);
 
   // Direct Supabase DB Upsert using slug conflict resolution
   try {
@@ -175,13 +175,12 @@ export async function saveCourse(courseData: Partial<Course> & { title: string; 
     const { error } = await supabase.from("courses").upsert(payload, { onConflict: "slug" });
 
     if (error) {
-      console.error("Error saving course to Supabase DB:", error.message || error.details || error);
+      console.warn("Supabase course save info:", error.message || error.details || error);
     }
   } catch (supabaseErr) {
     console.warn("Supabase sync warning:", supabaseErr);
   }
 
-  await fetchCoursesFromDatabase();
   return fullCourse;
 }
 

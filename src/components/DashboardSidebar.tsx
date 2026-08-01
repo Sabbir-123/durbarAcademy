@@ -42,7 +42,6 @@ export default function DashboardSidebar({ role, activeTab, onTabChange, userNam
     teacher: [
       { id: "dashboard", label: "ইনস্ট্রাক্টর ড্যাশবোর্ড", icon: LayoutDashboard, href: "/teacher/dashboard" },
       { id: "classes", label: "ক্লাস ম্যানেজার", icon: Video, href: "/teacher/classes" },
-      { id: "courses", label: "কোর্স কারিকুলাম", icon: BookOpen, href: "/teacher/courses" },
       { id: "stories", label: "সাকসেস স্টোরি", icon: Trophy, href: "/teacher/stories" },
     ],
     accountant: [
