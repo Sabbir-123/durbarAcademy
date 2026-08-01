@@ -18,7 +18,7 @@ export function getStoredCourses(): Course[] {
       return INITIAL_COURSES;
     }
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_COURSES;
+    return Array.isArray(parsed) ? parsed : INITIAL_COURSES;
   } catch (err) {
     console.error("Error reading courses from localStorage", err);
     return INITIAL_COURSES;

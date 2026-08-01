@@ -634,6 +634,7 @@ export default function AdminDashboard() {
 
     try {
       await deleteCourseStore(courseId);
+      setCourses(getStoredCourses());
       await logAuditAction(
         "কোর্স মুছে ফেলা (Delete)",
         `কোর্স "${title}" (ID: ${courseId}) সিস্টেম থেকে মুছে ফেলা হয়েছে।`
