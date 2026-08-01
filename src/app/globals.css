@@ -154,22 +154,30 @@ html.light .bg-\[\#0E2038\] {
               #F8FAFC !important;
 }
 
-/* Hero section image visibility in Light Mode */
+/* LIGHT MODE IMAGE OVERLAY FIX — Ensure images are crisp, vibrant, and NOT covered by solid white */
+html.light .absolute.inset-0.bg-gradient-to-t,
+html.light .absolute.inset-0.bg-gradient-to-r,
+html.light .absolute.inset-0.bg-gradient-to-b,
+html.light .absolute.inset-0.bg-gradient-to-l,
+html.light .absolute.inset-0.bg-gradient-to-br,
+html.light .absolute.inset-0.bg-black\/30,
+html.light .absolute.inset-0.bg-black\/40,
+html.light .absolute.inset-0.bg-black\/60 {
+  background-image: none !important;
+  background: transparent !important;
+}
+
+/* Hero section image & overlay visibility in Light Mode */
 html.light section#hero,
 html.light .hero-section-container {
-  background: #FFFFFF !important;
+  background: #F8FAFC !important;
 }
 
-html.light .hero-overlay-t {
-  background: linear-gradient(to top, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.65) 60%, transparent 100%) !important;
-}
-
-html.light .hero-overlay-r {
-  background: linear-gradient(to right, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.7) 50%, transparent 100%) !important;
-}
-
+html.light .hero-overlay-t,
+html.light .hero-overlay-r,
 html.light .hero-overlay-dark {
-  background: rgba(255, 255, 255, 0.15) !important;
+  background: transparent !important;
+  background-image: none !important;
 }
 
 html.light footer {
@@ -178,17 +186,15 @@ html.light footer {
 
 /* Durbar Solution container & overlay light mode fixes */
 html.light .durbar-solution-card {
-  background: #F8FAFC !important;
+  background: #FFFFFF !important;
   border-color: rgba(139, 92, 246, 0.15) !important;
   box-shadow: 0 20px 40px -15px rgba(139, 92, 246, 0.12) !important;
 }
 
-html.light .durbar-solution-overlay-r {
-  background: linear-gradient(to right, #F8FAFC 0%, rgba(248, 250, 252, 0.9) 50%, transparent 100%) !important;
-}
-
+html.light .durbar-solution-overlay-r,
 html.light .durbar-solution-overlay-t {
-  background: linear-gradient(to top, #F8FAFC 0%, rgba(248, 250, 252, 0.9) 60%, transparent 100%) !important;
+  background: transparent !important;
+  background-image: none !important;
 }
 
 html.light .durbar-solution-panel {
@@ -213,18 +219,6 @@ html.light aside {
   border-color: rgba(139, 92, 246, 0.15) !important;
   box-shadow: 0 10px 30px -10px rgba(139, 92, 246, 0.08), 
               0 1px 3px rgba(0, 0, 0, 0.01) !important;
-}
-
-/* Fix Tailwind Gradient Containers in Light Mode */
-html.light .bg-gradient-to-r,
-html.light .bg-gradient-to-br,
-html.light .bg-gradient-to-b,
-html.light .bg-gradient-to-l,
-html.light .bg-gradient-to-t {
-  background: #FFFFFF !important;
-  background-image: linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 60%, rgba(139, 92, 246, 0.06) 100%) !important;
-  border-color: rgba(139, 92, 246, 0.18) !important;
-  box-shadow: 0 10px 30px -10px rgba(139, 92, 246, 0.08) !important;
 }
 
 /* SUCCESS STORY & TESTIMONIAL LIGHT MODE FIXES */
