@@ -173,11 +173,16 @@ html.light .hero-section-container {
   background: #F8FAFC !important;
 }
 
-html.light .hero-overlay-t,
-html.light .hero-overlay-r,
+html.light .hero-overlay-r {
+  background: linear-gradient(to right, #FFFFFF 0%, rgba(255, 255, 255, 0.94) 35%, rgba(255, 255, 255, 0.65) 70%, rgba(255, 255, 255, 0.42) 100%) !important;
+}
+
+html.light .hero-overlay-t {
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.2) 60%, transparent 100%) !important;
+}
+
 html.light .hero-overlay-dark {
   background: transparent !important;
-  background-image: none !important;
 }
 
 html.light footer {
