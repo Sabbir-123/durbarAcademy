@@ -155,8 +155,8 @@ html.light .bg-\[\#0E2038\] {
 }
 
 /* LIGHT MODE IMAGE OVERLAY FIX — Ensure images are crisp, vibrant, and NOT covered by solid white */
-html.light .absolute.inset-0.bg-gradient-to-t:not(.hero-overlay-t),
-html.light .absolute.inset-0.bg-gradient-to-r:not(.hero-overlay-r),
+html.light .absolute.inset-0.bg-gradient-to-t:not(.hero-overlay-t):not(.durbar-solution-overlay-t),
+html.light .absolute.inset-0.bg-gradient-to-r:not(.hero-overlay-r):not(.durbar-solution-overlay-r),
 html.light .absolute.inset-0.bg-gradient-to-b,
 html.light .absolute.inset-0.bg-gradient-to-l,
 html.light .absolute.inset-0.bg-gradient-to-br,
@@ -198,20 +198,26 @@ html.light footer {
 /* Durbar Solution container & overlay light mode fixes */
 html.light .durbar-solution-card {
   background: #FFFFFF !important;
-  border-color: rgba(139, 92, 246, 0.15) !important;
+  border-color: rgba(139, 92, 246, 0.18) !important;
   box-shadow: 0 20px 40px -15px rgba(139, 92, 246, 0.12) !important;
 }
 
-html.light .durbar-solution-overlay-r,
+html.light .durbar-solution-card .durbar-solution-overlay-r,
+html.light .durbar-solution-overlay-r {
+  background: linear-gradient(90deg, #FFFFFF 0%, rgba(255, 255, 255, 0.95) 45%, rgba(255, 255, 255, 0.5) 80%, rgba(255, 255, 255, 0.35) 100%) !important;
+  background-image: linear-gradient(90deg, #FFFFFF 0%, rgba(255, 255, 255, 0.95) 45%, rgba(255, 255, 255, 0.5) 80%, rgba(255, 255, 255, 0.35) 100%) !important;
+}
+
+html.light .durbar-solution-card .durbar-solution-overlay-t,
 html.light .durbar-solution-overlay-t {
-  background: transparent !important;
-  background-image: none !important;
+  background: linear-gradient(0deg, #FFFFFF 0%, rgba(255, 255, 255, 0.85) 60%, transparent 100%) !important;
+  background-image: linear-gradient(0deg, #FFFFFF 0%, rgba(255, 255, 255, 0.85) 60%, transparent 100%) !important;
 }
 
 html.light .durbar-solution-panel {
   background: #FFFFFF !important;
-  border-color: rgba(139, 92, 246, 0.18) !important;
-  box-shadow: 0 15px 35px -10px rgba(139, 92, 246, 0.1) !important;
+  border-color: rgba(139, 92, 246, 0.2) !important;
+  box-shadow: 0 15px 35px -10px rgba(139, 92, 246, 0.12) !important;
 }
 
 /* Glass panel & cards styling */
