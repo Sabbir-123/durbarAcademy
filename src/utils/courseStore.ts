@@ -90,6 +90,7 @@ export async function saveCourse(courseData: Partial<Course> & { title: string; 
       "পিডিএফ নোটস ও প্র্যাকটিস শিট"
     ],
     instructors: courseData.instructors && courseData.instructors.length > 0 ? courseData.instructors : ["অভিজ্ঞ মেন্টর প্যানেল"],
+    teacherEmails: courseData.teacherEmails || (existingIndex >= 0 ? existingCourses[existingIndex].teacherEmails || [] : []),
     syllabus: courseData.syllabus && courseData.syllabus.length > 0 ? courseData.syllabus : [
       { title: "সম্পূর্ণ কোর্স বিষয়ভিত্তিক কভারেজ", lectures: 30, exams: 15 }
     ],

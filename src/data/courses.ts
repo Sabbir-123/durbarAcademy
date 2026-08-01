@@ -33,6 +33,7 @@ export interface Course {
   sections?: CourseSection[];
   features: string[];
   instructors: string[];
+  teacherEmails?: string[]; // Array of assigned teacher account emails
   syllabus: SyllabusChapter[];
   popular?: boolean;
   published?: boolean;

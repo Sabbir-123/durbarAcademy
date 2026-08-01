@@ -37,19 +37,18 @@ export default function TeacherCoursesPage() {
   const [newSyllabusLectures, setNewSyllabusLectures] = useState(10);
   const [newSyllabusExams, setNewSyllabusExams] = useState(5);
 
+  const [userEmail, setUserEmail] = useState<string>("");
+
   const supabase = createClient();
 
   useEffect(() => {
-    setCourses(getStoredCourses());
-    const unsub = subscribeCoursesStore(() => {
-      setCourses(getStoredCourses());
-    });
-
     async function loadUser() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
+
+      setUserEmail(user.email || "");
 
       const { data: prof } = await supabase
         .from("profiles")
@@ -60,8 +59,22 @@ export default function TeacherCoursesPage() {
     }
     loadUser();
 
+    setCourses(getStoredCourses());
+    const unsub = subscribeCoursesStore(() => {
+      setCourses(getStoredCourses());
+    });
+
     return () => unsub();
   }, []);
+
+  const currentTeacherEmail = profile?.email || userEmail;
+
+  // Filter courses assigned to this teacher (or open if no assignment)
+  const displayCourses = courses.filter((c) => {
+    if (!c.teacherEmails || c.teacherEmails.length === 0) return true;
+    if (!currentTeacherEmail) return true;
+    return c.teacherEmails.some((e) => e.toLowerCase() === currentTeacherEmail.toLowerCase());
+  });
 
   const handleOpenAdd = () => {
     setEditingCourse({
@@ -170,7 +183,7 @@ export default function TeacherCoursesPage() {
               <BookOpen className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white">সর্বমোট সক্রিয় কোর্স: {courses.length} টি</h2>
+              <h2 className="text-lg font-bold text-white">দায়িত্বপ্রাপ্ত কোর্স: {displayCourses.length} টি</h2>
               <p className="text-xs text-slate-400">কারিকুলাম হালনাগাদ ও কন্টেন্ট সংযোজন করুন</p>
             </div>
           </div>
@@ -195,7 +208,7 @@ export default function TeacherCoursesPage() {
 
         {/* Courses Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {courses.map((course) => (
+          {displayCourses.map((course) => (
             <div
               key={course.id}
               className="bg-[#0D2038] border border-white/10 rounded-3xl p-6 space-y-5 hover:border-[#F59E0B]/40 transition-all flex flex-col justify-between"

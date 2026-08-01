@@ -31,7 +31,6 @@ export default function TeacherDashboard() {
 
   useEffect(() => {
     setSuccessStories(getStoredSuccessStories());
-    setCoursesCount(getStoredCourses().length);
 
     const unsub = subscribeSuccessStoriesStore(() => {
       setSuccessStories(getStoredSuccessStories());
@@ -49,6 +48,15 @@ export default function TeacherDashboard() {
         .eq("id", user.id)
         .single();
       setProfile(prof);
+
+      const email = prof?.email || user.email;
+      const allCourses = getStoredCourses();
+      const assigned = allCourses.filter((c) => {
+        if (!c.teacherEmails || c.teacherEmails.length === 0) return true;
+        if (!email) return true;
+        return c.teacherEmails.some((e) => e.toLowerCase() === email.toLowerCase());
+      });
+      setCoursesCount(assigned.length);
     }
     loadData();
 

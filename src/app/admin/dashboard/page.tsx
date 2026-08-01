@@ -188,11 +188,13 @@ export default function AdminDashboard() {
 
   const [featuresInput, setFeaturesInput] = useState("");
   const [instructorsInput, setInstructorsInput] = useState("");
+  const [newCourseTeacherEmails, setNewCourseTeacherEmails] = useState<string[]>([]);
 
   // Edit Course Modal State
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [editFeaturesInput, setEditFeaturesInput] = useState("");
   const [editInstructorsInput, setEditInstructorsInput] = useState("");
+  const [editCourseTeacherEmails, setEditCourseTeacherEmails] = useState<string[]>([]);
 
   // New Success Story State
   const [newStory, setNewStory] = useState<Partial<StudentSuccess>>({
@@ -545,6 +547,7 @@ export default function AdminDashboard() {
         categoryLabel: "ডিফেন্স ও মিলিটারি",
         features: feats.length > 0 ? feats : ["লাইভ ও ওএমআর এক্সাম", "পিডিএফ নোটস"],
         instructors: insts.length > 0 ? insts : ["অভিজ্ঞ মেন্টর প্যানেল"],
+        teacherEmails: newCourseTeacherEmails,
       });
 
       await logAuditAction(
@@ -576,6 +579,7 @@ export default function AdminDashboard() {
       });
       setFeaturesInput("");
       setInstructorsInput("");
+      setNewCourseTeacherEmails([]);
     } catch (err: any) {
       alert("কোর্স তৈরি করতে সমস্যা হয়েছে: " + err.message);
     }
@@ -585,6 +589,7 @@ export default function AdminDashboard() {
     setEditingCourse({ ...course });
     setEditFeaturesInput((course.features || []).join("\n"));
     setEditInstructorsInput((course.instructors || []).join(", "));
+    setEditCourseTeacherEmails(course.teacherEmails || []);
   };
 
   const handleSaveEditedCourse = async (e: React.FormEvent) => {
@@ -608,6 +613,7 @@ export default function AdminDashboard() {
         categoryLabel: "ডিফেন্স ও মিলিটারি",
         features: feats,
         instructors: insts,
+        teacherEmails: editCourseTeacherEmails,
       });
 
       await logAuditAction(
@@ -1480,6 +1486,23 @@ export default function AdminDashboard() {
                         </button>
                       </div>
                     </div>
+
+                    {/* Assigned Teachers Badges */}
+                    <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-white/5 text-[10px]">
+                      <span className="text-slate-400 font-bold">দায়িত্বপ্রাপ্ত শিক্ষক:</span>
+                      {c.teacherEmails && c.teacherEmails.length > 0 ? (
+                        c.teacherEmails.map((email, idx) => (
+                          <span
+                            key={idx}
+                            className="px-2 py-0.5 rounded bg-[#F59E0B]/10 text-[#F59E0B] border border-[#F59E0B]/20 font-mono"
+                          >
+                            {email}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-slate-500 italic">সকল শিক্ষক (সকলের জন্য উন্মুক্ত)</span>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1636,6 +1659,68 @@ export default function AdminDashboard() {
                     onChange={(e) => setInstructorsInput(e.target.value)}
                     className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
                   />
+                </div>
+
+                {/* Multi-Select Teacher Assignment */}
+                <div className="space-y-1.5 pt-1">
+                  <label className="font-bold text-[#F59E0B] flex items-center justify-between">
+                    <span>দায়িত্বপ্রাপ্ত শিক্ষক অ্যাকাউন্টসমূহ (Assign Teachers):</span>
+                    <span className="text-[10px] text-slate-400 font-normal">
+                      ({newCourseTeacherEmails.length} জন নির্বাচিত)
+                    </span>
+                  </label>
+
+                  <div className="bg-[#07182E] border border-white/10 rounded-xl p-3 space-y-1.5 max-h-36 overflow-y-auto">
+                    {usersList.filter(
+                      (u) =>
+                        u.role.toLowerCase().includes("teacher") ||
+                        u.role.toLowerCase().includes("instructor")
+                    ).length > 0 ? (
+                      usersList
+                        .filter(
+                          (u) =>
+                            u.role.toLowerCase().includes("teacher") ||
+                            u.role.toLowerCase().includes("instructor")
+                        )
+                        .map((t) => {
+                          const isSelected = newCourseTeacherEmails.includes(t.email.toLowerCase());
+                          return (
+                            <div
+                              key={t.id || t.email}
+                              onClick={() => {
+                                const emailLower = t.email.toLowerCase();
+                                if (isSelected) {
+                                  setNewCourseTeacherEmails(
+                                    newCourseTeacherEmails.filter((e) => e !== emailLower)
+                                  );
+                                } else {
+                                  setNewCourseTeacherEmails([...newCourseTeacherEmails, emailLower]);
+                                }
+                              }}
+                              className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors border ${
+                                isSelected
+                                  ? "bg-[#F59E0B]/20 border-[#F59E0B]/50 text-white"
+                                  : "bg-[#0D2038] border-white/5 text-slate-300 hover:border-white/20"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  readOnly
+                                  className="accent-[#F59E0B] rounded pointer-events-none"
+                                />
+                                <span className="font-bold text-xs">{t.full_name}</span>
+                                <span className="text-[10px] text-slate-400">({t.email})</span>
+                              </div>
+                              {isSelected && <Check className="w-3.5 h-3.5 text-[#F59E0B]" />}
+                            </div>
+                          );
+                        })
+                    ) : (
+                      <p className="text-slate-400 text-xs py-1">কোনো নিবন্ধিত শিক্ষক অ্যাকাউন্ট পাওয়া যায়নি।</p>
+                    )}
+                  </div>
                 </div>
 
                 <button
@@ -2314,6 +2399,68 @@ export default function AdminDashboard() {
                   onChange={(e) => setEditInstructorsInput(e.target.value)}
                   className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none"
                 />
+              </div>
+
+              {/* Multi-Select Teacher Assignment for Edit Modal */}
+              <div className="space-y-1.5 pt-1">
+                <label className="font-bold text-[#F59E0B] flex items-center justify-between">
+                  <span>দায়িত্বপ্রাপ্ত শিক্ষক অ্যাকাউন্টসমূহ (Assign Teachers):</span>
+                  <span className="text-[10px] text-slate-400 font-normal">
+                    ({editCourseTeacherEmails.length} জন নির্বাচিত)
+                  </span>
+                </label>
+
+                <div className="bg-[#07182E] border border-white/10 rounded-xl p-3 space-y-1.5 max-h-36 overflow-y-auto">
+                  {usersList.filter(
+                    (u) =>
+                      u.role.toLowerCase().includes("teacher") ||
+                      u.role.toLowerCase().includes("instructor")
+                  ).length > 0 ? (
+                    usersList
+                      .filter(
+                        (u) =>
+                          u.role.toLowerCase().includes("teacher") ||
+                          u.role.toLowerCase().includes("instructor")
+                      )
+                      .map((t) => {
+                        const isSelected = editCourseTeacherEmails.includes(t.email.toLowerCase());
+                        return (
+                          <div
+                            key={t.id || t.email}
+                            onClick={() => {
+                              const emailLower = t.email.toLowerCase();
+                              if (isSelected) {
+                                setEditCourseTeacherEmails(
+                                  editCourseTeacherEmails.filter((e) => e !== emailLower)
+                                );
+                              } else {
+                                setEditCourseTeacherEmails([...editCourseTeacherEmails, emailLower]);
+                              }
+                            }}
+                            className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors border ${
+                              isSelected
+                                ? "bg-[#F59E0B]/20 border-[#F59E0B]/50 text-white"
+                                : "bg-[#0D2038] border-white/5 text-slate-300 hover:border-white/20"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                readOnly
+                                className="accent-[#F59E0B] rounded pointer-events-none"
+                              />
+                              <span className="font-bold text-xs">{t.full_name}</span>
+                              <span className="text-[10px] text-slate-400">({t.email})</span>
+                            </div>
+                            {isSelected && <Check className="w-3.5 h-3.5 text-[#F59E0B]" />}
+                          </div>
+                        );
+                      })
+                  ) : (
+                    <p className="text-slate-400 text-xs py-1">কোনো নিবন্ধিত শিক্ষক অ্যাকাউন্ট পাওয়া যায়নি।</p>
+                  )}
+                </div>
               </div>
 
               <div className="flex gap-3 pt-2">
