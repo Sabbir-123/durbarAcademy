@@ -20,20 +20,35 @@ import {
 
 export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState<boolean>(false);
   const [registerInitialCourseId, setRegisterInitialCourseId] = useState<string | undefined>(undefined);
 
   useEffect(() => {
+    // 1. Initial local cache check
+    const cached = getStoredCourses().filter((c) => c.published !== false);
+    if (cached.length > 0) {
+      setCourses(cached);
+      setIsLoading(false);
+    }
+
+    // 2. Fetch fresh DB courses
     async function loadData() {
-      const dbCourses = await syncCoursesFromSupabase();
-      setCourses(dbCourses.filter((c) => c.published !== false));
+      try {
+        const dbCourses = await syncCoursesFromSupabase();
+        setCourses(dbCourses.filter((c) => c.published !== false));
+      } finally {
+        setIsLoading(false);
+      }
     }
     loadData();
 
+    // 3. Store listener
     const unsubscribe = subscribeCoursesStore(() => {
       setCourses(getStoredCourses().filter((c) => c.published !== false));
+      setIsLoading(false);
     });
     return () => unsubscribe();
   }, []);
@@ -151,7 +166,9 @@ export default function CoursesPage() {
 
           {/* Results Count */}
           <div className="flex items-center justify-between mb-6 text-sm text-slate-400">
-            <span>মোট {filteredCourses.length}টি কোর্স পাওয়া গেছে</span>
+            <span>
+              {isLoading ? "কোর্স ডেটা লোড হচ্ছে..." : `মোট ${filteredCourses.length}টি কোর্স পাওয়া গেছে`}
+            </span>
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
@@ -163,7 +180,41 @@ export default function CoursesPage() {
           </div>
 
           {/* Course Cards Grid with Alternating Directional Entrances */}
-          {filteredCourses.length > 0 ? (
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[1, 2, 3, 4, 5, 6].map((idx) => (
+                <div
+                  key={idx}
+                  className="course-card rounded-3xl bg-gradient-to-b from-[#0E2038] to-[#08192E] border border-white/10 p-5 flex flex-col justify-between shadow-xl relative overflow-hidden animate-pulse"
+                >
+                  <div className="space-y-4">
+                    <div className="relative h-44 rounded-2xl overflow-hidden bg-slate-800/80 flex items-center justify-center">
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse" />
+                      <Sparkles className="w-8 h-8 text-amber-500/30 animate-pulse" />
+                    </div>
+
+                    <div className="space-y-2.5">
+                      <div className="h-5 w-3/4 bg-slate-700/60 rounded-md" />
+                      <div className="h-3.5 w-full bg-slate-700/35 rounded-md" />
+                      <div className="h-3.5 w-4/5 bg-slate-700/35 rounded-md" />
+                    </div>
+
+                    <div className="h-10 w-full bg-slate-800/70 rounded-xl border border-white/5 flex items-center justify-between px-3">
+                      <div className="h-3 w-20 bg-slate-700/50 rounded" />
+                      <div className="h-3 w-24 bg-slate-700/50 rounded" />
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-white/10 space-y-3 mt-4">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="h-9 rounded-xl bg-slate-700/50" />
+                      <div className="h-9 rounded-xl bg-amber-500/40" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : filteredCourses.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {filteredCourses.map((course, idx) => {
                 const initialPos =

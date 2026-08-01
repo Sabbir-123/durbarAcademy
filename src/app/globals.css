@@ -349,6 +349,98 @@ html.light .course-enroll-btn * {
   -webkit-text-fill-color: #FFFFFF !important;
 }
 
+/* PUBLIC COURSE DETAIL PAGE LIGHT MODE STYLES */
+html.light .course-detail-hero {
+  background: linear-gradient(135deg, #0F172A 0%, #1E1B4B 50%, #311042 100%) !important;
+  border-color: rgba(139, 92, 246, 0.3) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.25) !important;
+}
+
+html.light .course-detail-hero h1,
+html.light .course-detail-hero p,
+html.light .course-detail-hero span,
+html.light .course-detail-hero strong {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+html.light .course-detail-hero p {
+  color: #E2E8F0 !important;
+  -webkit-text-fill-color: #E2E8F0 !important;
+}
+
+html.light .course-detail-breadcrumb {
+  color: #475569 !important;
+}
+html.light .course-detail-breadcrumb:hover {
+  color: #7C3AED !important;
+}
+
+html.light .course-detail-tab-active {
+  background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 14px rgba(139, 92, 246, 0.3) !important;
+}
+
+html.light .course-detail-tab-inactive {
+  background: #FFFFFF !important;
+  color: #334155 !important;
+  border: 1px solid rgba(139, 92, 246, 0.15) !important;
+}
+html.light .course-detail-tab-inactive:hover {
+  background: #F1F5F9 !important;
+  color: #7C3AED !important;
+}
+
+html.light .course-detail-card {
+  background: #FFFFFF !important;
+  border-color: rgba(139, 92, 246, 0.15) !important;
+  box-shadow: 0 10px 30px -10px rgba(139, 92, 246, 0.08) !important;
+}
+
+html.light .course-detail-card h3,
+html.light .course-detail-card h4,
+html.light .course-detail-card strong,
+html.light .course-detail-card button span {
+  color: #0F172A !important;
+}
+
+html.light .course-detail-card p,
+html.light .course-detail-card span:not(.badge-text) {
+  color: #475569 !important;
+}
+
+html.light .course-detail-inner-item {
+  background: #F8FAFC !important;
+  border-color: rgba(139, 92, 246, 0.12) !important;
+  color: #1E293B !important;
+}
+
+html.light .course-detail-inner-item span,
+html.light .course-detail-inner-item strong {
+  color: #1E293B !important;
+}
+
+html.light .course-detail-sidebar {
+  background: #FFFFFF !important;
+  border-color: rgba(139, 92, 246, 0.2) !important;
+  box-shadow: 0 20px 40px -10px rgba(139, 92, 246, 0.12) !important;
+}
+
+html.light .course-detail-sidebar .price-main {
+  color: #7C3AED !important;
+}
+
+html.light .course-detail-sidebar .seats-box {
+  background: #F8FAFC !important;
+  border-color: rgba(139, 92, 246, 0.12) !important;
+}
+
+html.light .course-detail-sidebar .seats-box span {
+  color: #334155 !important;
+}
+
 html.light .search-input-box {
   background: #FFFFFF !important;
   border-color: rgba(139, 92, 246, 0.2) !important;

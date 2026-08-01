@@ -92,7 +92,7 @@ export default function CourseDetailView({ courseId }: CourseDetailViewProps) {
         <div className="pt-24 pb-4 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Link
             href="/courses"
-            className="inline-flex items-center gap-2 text-xs text-slate-400 hover:text-[#F59E0B] transition-colors"
+            className="course-detail-breadcrumb inline-flex items-center gap-2 text-xs text-slate-400 hover:text-[#F59E0B] transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>সকল কোর্সসমূহে ফিরে যান</span>
@@ -121,15 +121,15 @@ export default function CourseDetailView({ courseId }: CourseDetailViewProps) {
                   {course.tagline}
                 </p>
                 <div className="flex flex-wrap gap-4 pt-2 text-xs text-slate-300">
-                  <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0E2038] border border-white/10">
+                  <span className="course-detail-inner-item flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0E2038] border border-white/10">
                     <Clock className="w-4 h-4 text-[#F59E0B]" />
                     {course.duration}
                   </span>
-                  <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0E2038] border border-white/10">
+                  <span className="course-detail-inner-item flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0E2038] border border-white/10">
                     <Calendar className="w-4 h-4 text-emerald-400" />
                     {course.startDate}
                   </span>
-                  <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0E2038] border border-white/10">
+                  <span className="course-detail-inner-item flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0E2038] border border-white/10">
                     <Users className="w-4 h-4 text-amber-400" />
                     অবশিষ্ট সিট: {course.seatsRemaining}টি
                   </span>
@@ -162,13 +162,13 @@ export default function CourseDetailView({ courseId }: CourseDetailViewProps) {
               initial={{ opacity: 0, y: -40 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-              className="bg-gradient-to-r from-[#0B2347] via-[#0E2038] to-[#07182E] rounded-3xl p-6 sm:p-10 border border-white/10 shadow-2xl relative overflow-hidden"
+              className="course-detail-hero bg-gradient-to-r from-[#0B2347] via-[#0E2038] to-[#07182E] rounded-3xl p-6 sm:p-10 border border-white/10 shadow-2xl relative overflow-hidden"
             >
               <div className="absolute top-0 right-0 w-80 h-80 bg-[#F59E0B]/10 rounded-full blur-3xl pointer-events-none" />
 
               <div className="max-w-3xl space-y-4 relative z-10">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-[#F59E0B]/20 text-[#F59E0B] border border-[#F59E0B]/40">
+                  <span className="badge-text text-xs font-bold px-3 py-1 rounded-full bg-[#F59E0B]/20 text-[#F59E0B] border border-[#F59E0B]/40">
                     {course.categoryLabel}
                   </span>
                   {course.batchBadge && (
@@ -220,8 +220,8 @@ export default function CourseDetailView({ courseId }: CourseDetailViewProps) {
                   onClick={() => setActiveTab("overview")}
                   className={`px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all ${
                     activeTab === "overview"
-                      ? "bg-[#F59E0B] text-black shadow-lg"
-                      : "bg-[#0E2038] text-slate-300 hover:text-white"
+                      ? "course-detail-tab-active bg-[#F59E0B] text-black shadow-lg"
+                      : "course-detail-tab-inactive bg-[#0E2038] text-slate-300 hover:text-white"
                   }`}
                 >
                   কোর্স বিস্তারিত (Overview)
@@ -230,8 +230,8 @@ export default function CourseDetailView({ courseId }: CourseDetailViewProps) {
                   onClick={() => setActiveTab("syllabus")}
                   className={`px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all ${
                     activeTab === "syllabus"
-                      ? "bg-[#F59E0B] text-black shadow-lg"
-                      : "bg-[#0E2038] text-slate-300 hover:text-white"
+                      ? "course-detail-tab-active bg-[#F59E0B] text-black shadow-lg"
+                      : "course-detail-tab-inactive bg-[#0E2038] text-slate-300 hover:text-white"
                   }`}
                 >
                   সিলেবাস ও লেকচার (Syllabus)
@@ -240,8 +240,8 @@ export default function CourseDetailView({ courseId }: CourseDetailViewProps) {
                   onClick={() => setActiveTab("instructors")}
                   className={`px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all ${
                     activeTab === "instructors"
-                      ? "bg-[#F59E0B] text-black shadow-lg"
-                      : "bg-[#0E2038] text-slate-300 hover:text-white"
+                      ? "course-detail-tab-active bg-[#F59E0B] text-black shadow-lg"
+                      : "course-detail-tab-inactive bg-[#0E2038] text-slate-300 hover:text-white"
                   }`}
                 >
                   মেন্টর প্যানেল (Instructors)
@@ -257,7 +257,7 @@ export default function CourseDetailView({ courseId }: CourseDetailViewProps) {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: false, amount: 0.2 }}
                     transition={{ duration: 0.6 }}
-                    className="bg-[#0E2038] rounded-3xl p-6 sm:p-8 border border-white/10 space-y-4"
+                    className="course-detail-card bg-[#0E2038] rounded-3xl p-6 sm:p-8 border border-white/10 space-y-4"
                   >
                     <h3 className="text-xl font-bold text-white flex items-center gap-2">
                       <BookOpen className="w-5 h-5 text-[#F59E0B]" />
@@ -275,7 +275,7 @@ export default function CourseDetailView({ courseId }: CourseDetailViewProps) {
                       whileInView={{ opacity: 1, y: 0 }}
                       viewport={{ once: false, amount: 0.2 }}
                       transition={{ duration: 0.6 }}
-                      className="bg-[#0E2038] rounded-3xl p-6 border border-white/10 space-y-3"
+                      className="course-detail-card bg-[#0E2038] rounded-3xl p-6 border border-white/10 space-y-3"
                     >
                       <h3 className="text-lg font-bold text-white flex items-center gap-2">
                         <PlayCircle className="w-5 h-5 text-[#F59E0B]" />
@@ -299,7 +299,7 @@ export default function CourseDetailView({ courseId }: CourseDetailViewProps) {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: false, amount: 0.2 }}
                     transition={{ duration: 0.6 }}
-                    className="bg-[#0E2038] rounded-3xl p-6 sm:p-8 border border-white/10 space-y-4"
+                    className="course-detail-card bg-[#0E2038] rounded-3xl p-6 sm:p-8 border border-white/10 space-y-4"
                   >
                     <h3 className="text-xl font-bold text-white flex items-center gap-2">
                       <Zap className="w-5 h-5 text-emerald-400" />
@@ -309,7 +309,7 @@ export default function CourseDetailView({ courseId }: CourseDetailViewProps) {
                       {course.features.map((feat, idx) => (
                         <div
                           key={idx}
-                          className="flex items-start gap-3 p-3.5 rounded-2xl bg-[#07182E] border border-white/5 text-xs text-slate-200"
+                          className="course-detail-inner-item flex items-start gap-3 p-3.5 rounded-2xl bg-[#07182E] border border-white/5 text-xs text-slate-200"
                         >
                           <CheckCircle2 className="w-4 h-4 text-[#F59E0B] shrink-0 mt-0.5" />
                           <span>{feat}</span>
@@ -327,7 +327,7 @@ export default function CourseDetailView({ courseId }: CourseDetailViewProps) {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: false, amount: 0.2 }}
                   transition={{ duration: 0.6 }}
-                  className="bg-[#0E2038] rounded-3xl p-6 sm:p-8 border border-white/10 space-y-6"
+                  className="course-detail-card bg-[#0E2038] rounded-3xl p-6 sm:p-8 border border-white/10 space-y-6"
                 >
                   <h3 className="text-xl font-bold text-white flex items-center gap-2">
                     <BookOpen className="w-5 h-5 text-[#F59E0B]" />
@@ -341,7 +341,7 @@ export default function CourseDetailView({ courseId }: CourseDetailViewProps) {
                         return (
                           <div
                             key={idx}
-                            className="bg-[#07182E] rounded-2xl border border-white/10 overflow-hidden"
+                            className="course-detail-inner-item bg-[#07182E] rounded-2xl border border-white/10 overflow-hidden"
                           >
                             <button
                               onClick={() => setOpenSyllabusIndex(isOpen ? null : idx)}
@@ -387,7 +387,7 @@ export default function CourseDetailView({ courseId }: CourseDetailViewProps) {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: false, amount: 0.2 }}
                   transition={{ duration: 0.6 }}
-                  className="bg-[#0E2038] rounded-3xl p-6 sm:p-8 border border-white/10 space-y-6"
+                  className="course-detail-card bg-[#0E2038] rounded-3xl p-6 sm:p-8 border border-white/10 space-y-6"
                 >
                   <h3 className="text-xl font-bold text-white flex items-center gap-2">
                     <Users className="w-5 h-5 text-[#F59E0B]" />
@@ -398,7 +398,7 @@ export default function CourseDetailView({ courseId }: CourseDetailViewProps) {
                     {course.instructors.map((name, idx) => (
                       <div
                         key={idx}
-                        className="bg-[#07182E] p-4 rounded-2xl border border-white/10 flex items-center gap-3"
+                        className="course-detail-inner-item bg-[#07182E] p-4 rounded-2xl border border-white/10 flex items-center gap-3"
                       >
                         <div className="w-12 h-12 rounded-xl bg-[#142C4B] flex items-center justify-center text-[#F59E0B] font-bold">
                           <Award className="w-6 h-6" />
@@ -421,7 +421,7 @@ export default function CourseDetailView({ courseId }: CourseDetailViewProps) {
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: false, amount: 0.15 }}
                 transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-                className="bg-[#0E2038] rounded-3xl p-6 border border-white/15 space-y-6 shadow-2xl sticky top-28"
+                className="course-detail-sidebar bg-[#0E2038] rounded-3xl p-6 border border-white/15 space-y-6 shadow-2xl sticky top-28"
               >
                 {/* Course Thumbnail Image */}
                 <div className="relative h-44 rounded-2xl overflow-hidden bg-slate-800 border border-white/10">
@@ -439,7 +439,7 @@ export default function CourseDetailView({ courseId }: CourseDetailViewProps) {
                 <div className="space-y-1">
                   <span className="text-xs text-slate-400 block font-semibold">কোর্স রেজিস্ট্রেশন ফি:</span>
                   <div className="flex items-baseline gap-3">
-                    <span className="text-3xl font-black text-[#F59E0B]">
+                    <span className="price-main text-3xl font-black text-[#F59E0B]">
                       ৳{course.price.toLocaleString("bn-BD")}
                     </span>
                     {course.originalPrice > course.price && (
@@ -451,7 +451,7 @@ export default function CourseDetailView({ courseId }: CourseDetailViewProps) {
                 </div>
 
                 {/* Seats Remaining Pill */}
-                <div className="p-3 rounded-xl bg-[#07182E] border border-white/5 flex items-center justify-between text-xs">
+                <div className="seats-box p-3 rounded-xl bg-[#07182E] border border-white/5 flex items-center justify-between text-xs">
                   <span className="text-slate-300">অবশিষ্ট আসন সংখ্যা:</span>
                   <strong className="text-amber-400">{course.seatsRemaining}টি সিট খালি</strong>
                 </div>
