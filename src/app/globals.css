@@ -349,6 +349,37 @@ html.light .course-enroll-btn * {
   -webkit-text-fill-color: #FFFFFF !important;
 }
 
+/* REGISTRATION MODAL LIGHT MODE STYLES */
+html.light .registration-modal-card {
+  background: #FFFFFF !important;
+  border-color: rgba(139, 92, 246, 0.2) !important;
+  color: #0F172A !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+}
+
+html.light .registration-modal-card label,
+html.light .registration-modal-card h3,
+html.light .registration-modal-card h4,
+html.light .registration-modal-card strong {
+  color: #0F172A !important;
+}
+
+html.light .registration-modal-card p,
+html.light .registration-modal-card span:not(.badge-text) {
+  color: #475569 !important;
+}
+
+html.light .registration-modal-card input,
+html.light .registration-modal-card select {
+  background: #F8FAFC !important;
+  border-color: rgba(139, 92, 246, 0.2) !important;
+  color: #0F172A !important;
+}
+
+html.light .registration-modal-card input::placeholder {
+  color: #94A3B8 !important;
+}
+
 /* PUBLIC COURSE DETAIL PAGE LIGHT MODE STYLES */
 html.light .course-detail-hero {
   background: linear-gradient(135deg, #0F172A 0%, #1E1B4B 50%, #311042 100%) !important;

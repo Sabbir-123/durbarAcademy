@@ -30,6 +30,7 @@ export default function RegistrationModal({ initialCourseId, onClose }: Registra
   const [college, setCollege] = useState("");
   const [branch, setBranch] = useState("online");
   const [paymentMethod, setPaymentMethod] = useState("bkash");
+  const [trxId, setTrxId] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -126,12 +127,16 @@ export default function RegistrationModal({ initialCourseId, onClose }: Registra
       alert("অনুগ্রহ করে আপনার নাম এবং মোবাইল নম্বর প্রদান করুন।");
       return;
     }
+    if (!trxId.trim()) {
+      alert("অনুগ্রহ করে আপনার পেমেন্ট ট্রানজেকশন আইডি (TrxID) বা প্রেরক মোবাইল নম্বর প্রদান করুন।");
+      return;
+    }
     setIsSuccess(true);
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-      <div className="bg-[#0D2038] border border-white/15 rounded-3xl w-full max-w-xl overflow-hidden shadow-2xl relative p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
+      <div className="registration-modal-card bg-[#0D2038] border border-white/15 rounded-3xl w-full max-w-xl overflow-hidden shadow-2xl relative p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
         
         {/* Close Button */}
         <button
@@ -252,6 +257,26 @@ export default function RegistrationModal({ initialCourseId, onClose }: Registra
               </div>
             </div>
 
+            {/* Transaction ID / Payment Number Field */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-300">
+                  পেমেন্ট ট্রানজেকশন আইডি (TrxID) / প্রেরক নম্বর:*
+                </label>
+                <span className="text-[10px] text-amber-400 font-semibold">
+                  (ফি পাঠানোর পর প্রাপ্ত TrxID লিখুন)
+                </span>
+              </div>
+              <input
+                type="text"
+                required
+                placeholder="যেমন: 9J8A7B6C5D অথবা প্রেরক মোবাইল নম্বর"
+                value={trxId}
+                onChange={(e) => setTrxId(e.target.value)}
+                className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:border-[#F59E0B] outline-none"
+              />
+            </div>
+
             {/* Total Fee & Submit */}
             <div className="pt-2 border-t border-white/10 space-y-3">
               <div className="flex items-center justify-between text-xs">
@@ -291,6 +316,10 @@ export default function RegistrationModal({ initialCourseId, onClose }: Registra
               <div className="flex justify-between border-b border-white/5 pb-1.5">
                 <span className="text-slate-400">মনোনীত কোর্স:</span>
                 <span className="text-white font-bold">{selectedCourse.title}</span>
+              </div>
+              <div className="flex justify-between border-b border-white/5 pb-1.5">
+                <span className="text-slate-400">পেমেন্ট মেথড ও TrxID:</span>
+                <span className="text-amber-400 font-bold uppercase">{paymentMethod} ({trxId})</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">শাখা:</span>
