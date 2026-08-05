@@ -60,6 +60,16 @@ export default function LoginPage() {
           role: role,
         });
 
+        if (role === "student") {
+          const pending = sessionStorage.getItem("pending_enroll_course");
+          if (pending) {
+            router.push("/courses");
+            return;
+          }
+          router.push("/complete-profile");
+          return;
+        }
+
         router.push(`/${role}/dashboard`);
         return;
       }
@@ -119,6 +129,17 @@ export default function LoginPage() {
     }
 
     setCurrentUser(foundUser);
+
+    if (role === "student") {
+      const pending = sessionStorage.getItem("pending_enroll_course");
+      if (pending) {
+        router.push("/courses");
+        return;
+      }
+      router.push("/complete-profile");
+      return;
+    }
+
     router.push(`/${role}/dashboard`);
   };
 

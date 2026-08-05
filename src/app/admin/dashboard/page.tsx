@@ -35,6 +35,15 @@ import {
   isUserDeleted,
 } from "@/utils/userStore";
 import {
+  getStoredPaymentDetails,
+  savePaymentDetailStore,
+  deletePaymentDetailStore,
+  togglePaymentDetailStatusStore,
+  subscribePaymentDetailsStore,
+  syncPaymentDetailsFromSupabase,
+  PaymentDetail,
+} from "@/utils/paymentDetailStore";
+import {
   Users,
   ShieldCheck,
   Trash2,
@@ -65,6 +74,15 @@ import {
   LayoutDashboard,
   ArrowRight,
   UserCheck,
+  CreditCard,
+  Building2,
+  Phone,
+  MapPin,
+  Landmark,
+  ToggleLeft,
+  ToggleRight,
+  CheckCircle2,
+  Sparkles,
 } from "lucide-react";
 
 export default function AdminDashboard() {
@@ -74,8 +92,44 @@ export default function AdminDashboard() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [successStories, setSuccessStories] = useState<StudentSuccess[]>([]);
   const [activeTab, setActiveTab] = useState<
-    "dashboard" | "users" | "courses" | "stories" | "finance" | "audit"
+    "dashboard" | "users" | "courses" | "stories" | "finance" | "payment" | "audit"
   >("dashboard");
+
+  // Payment Details Management State
+  const [paymentDetails, setPaymentDetails] = useState<PaymentDetail[]>([]);
+  const [paymentSearchQuery, setPaymentSearchQuery] = useState<string>("");
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>("all");
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState<boolean>(false);
+  const [editingPayment, setEditingPayment] = useState<PaymentDetail | null>(null);
+
+  const [paymentForm, setPaymentForm] = useState<{
+    id?: string;
+    method_type: "bkash" | "nagad" | "rocket" | "bank" | "other";
+    title: string;
+    account_type: "personal" | "agent" | "merchant" | "bank_account";
+    mobile_number: string;
+    bank_name: string;
+    account_holder_name: string;
+    account_number: string;
+    branch_name: string;
+    district: string;
+    routing_number: string;
+    instructions: string;
+    is_active: boolean;
+  }>({
+    method_type: "bkash",
+    title: "",
+    account_type: "personal",
+    mobile_number: "",
+    bank_name: "",
+    account_holder_name: "",
+    account_number: "",
+    branch_name: "",
+    district: "",
+    routing_number: "",
+    instructions: "",
+    is_active: true,
+  });
 
   // User Filter & Search State
   const [roleFilter, setRoleFilter] = useState<string>("all");
@@ -182,6 +236,7 @@ export default function AdminDashboard() {
     imageUrl: "",
     videoUrl: "",
     detailLayout: "standard",
+    courseMode: "both",
     description: "",
     features: [],
     instructors: [],
@@ -219,12 +274,12 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const hash = window.location.hash.replace("#", "");
-      if (["dashboard", "users", "courses", "stories", "finance", "audit"].includes(hash)) {
+      if (["dashboard", "users", "courses", "stories", "finance", "payment", "audit"].includes(hash)) {
         setActiveTab(hash as any);
       }
     }
 
-    // Sync local stored users, courses, success stories, and 30-day purged audit logs
+    // Sync local stored users, courses, success stories, payment details, and audit logs
     setUsersList(getStoredUsers());
     const unsubUsers = subscribeUserStore(() => {
       setUsersList(getStoredUsers());
@@ -240,11 +295,21 @@ export default function AdminDashboard() {
       setSuccessStories(getStoredSuccessStories());
     });
 
+    setPaymentDetails(getStoredPaymentDetails());
+    const unsubPayment = subscribePaymentDetailsStore(() => {
+      setPaymentDetails(getStoredPaymentDetails());
+    });
+
     setAuditLogs(getStoredAuditLogs());
 
     async function loadData() {
       const synced = await syncCoursesFromSupabase();
       setCourses(synced);
+
+      const syncedPayments = await syncPaymentDetailsFromSupabase();
+      if (syncedPayments && syncedPayments.length > 0) {
+        setPaymentDetails(syncedPayments);
+      }
 
       const {
         data: { user },
@@ -577,6 +642,7 @@ export default function AdminDashboard() {
         imageUrl: "",
         videoUrl: "",
         detailLayout: "standard",
+        courseMode: "both",
         description: "",
         features: [],
         instructors: [],
@@ -771,6 +837,115 @@ export default function AdminDashboard() {
       console.error(err);
     }
   };
+
+  // PAYMENT DETAILS CRUD HANDLERS
+  const handleOpenAddPaymentModal = () => {
+    setEditingPayment(null);
+    setPaymentForm({
+      method_type: "bkash",
+      title: "",
+      account_type: "personal",
+      mobile_number: "",
+      bank_name: "",
+      account_holder_name: "",
+      account_number: "",
+      branch_name: "",
+      district: "",
+      routing_number: "",
+      instructions: "",
+      is_active: true,
+    });
+    setIsPaymentModalOpen(true);
+  };
+
+  const handleOpenEditPaymentModal = (item: PaymentDetail) => {
+    setEditingPayment(item);
+    setPaymentForm({
+      id: item.id,
+      method_type: item.method_type,
+      title: item.title,
+      account_type: item.account_type || "personal",
+      mobile_number: item.mobile_number || "",
+      bank_name: item.bank_name || "",
+      account_holder_name: item.account_holder_name || "",
+      account_number: item.account_number || "",
+      branch_name: item.branch_name || "",
+      district: item.district || "",
+      routing_number: item.routing_number || "",
+      instructions: item.instructions || "",
+      is_active: item.is_active,
+    });
+    setIsPaymentModalOpen(true);
+  };
+
+  const handleSavePaymentForm = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!paymentForm.title.trim()) {
+      alert("অনুগ্রহ করে পেমেন্ট অ্যাকাউন্টের বিষয়/শিরোনাম প্রদান করুন।");
+      return;
+    }
+
+    if (paymentForm.method_type === "bank") {
+      if (!paymentForm.bank_name || !paymentForm.account_number) {
+        alert("অনুগ্রহ করে ব্যাংকের নাম এবং হিসাব নম্বর প্রদান করুন।");
+        return;
+      }
+    } else {
+      if (!paymentForm.mobile_number) {
+        alert("অনুগ্রহ করে মোবাইল নম্বর প্রদান করুন।");
+        return;
+      }
+    }
+
+    const updated = await savePaymentDetailStore(paymentForm);
+    setPaymentDetails(updated);
+    setIsPaymentModalOpen(false);
+
+    const actor = profile?.full_name || "Ahmed Sabbir (Super Admin)";
+    const actionText = editingPayment ? "পেমেন্ট তথ্য আপডেট" : "নতুন পেমেন্ট তথ্য সংযোজন";
+    const detailText = `${paymentForm.title} (${paymentForm.method_type.toUpperCase()}) - ${paymentForm.account_number || paymentForm.mobile_number}`;
+    await logAuditAction(actor, "admin", actionText, detailText);
+    setAuditLogs(getStoredAuditLogs());
+  };
+
+  const handleDeletePayment = async (id: string, title: string) => {
+    if (confirm(`আপনি কি নিশ্চিত যে "${title}" পেমেন্ট অ্যাকাউন্টটি মুছে ফেলতে চান?`)) {
+      const updated = await deletePaymentDetailStore(id);
+      setPaymentDetails(updated);
+      const actor = profile?.full_name || "Ahmed Sabbir (Super Admin)";
+      await logAuditAction(actor, "admin", "পেমেন্ট তথ্য ডিলিট", `পেমেন্ট অ্যাকাউন্ট ${title} মুছে ফেলা হয়েছে।`);
+      setAuditLogs(getStoredAuditLogs());
+    }
+  };
+
+  const handleTogglePaymentStatus = async (id: string, currentStatus: boolean, title: string) => {
+    const updated = await togglePaymentDetailStatusStore(id);
+    setPaymentDetails(updated);
+    const actor = profile?.full_name || "Ahmed Sabbir (Super Admin)";
+    const statusText = !currentStatus ? "সক্রিয় (Active)" : "নিষ্ক্রিয় (Inactive)";
+    await logAuditAction(actor, "admin", "পেমেন্ট স্ট্যাটাস পরিবর্তন", `পেমেন্ট অ্যাকাউন্ট ${title}-এর স্ট্যাটাস ${statusText} করা হয়েছে।`);
+    setAuditLogs(getStoredAuditLogs());
+  };
+
+  // PAYMENT DETAILS FILTER & SEARCH
+  const filteredPaymentDetails = paymentDetails.filter((item) => {
+    const matchesMethod = paymentMethodFilter === "all" || item.method_type === paymentMethodFilter;
+    const q = paymentSearchQuery.toLowerCase();
+    const matchesQuery =
+      !q ||
+      item.title.toLowerCase().includes(q) ||
+      (item.mobile_number && item.mobile_number.includes(q)) ||
+      (item.bank_name && item.bank_name.toLowerCase().includes(q)) ||
+      (item.account_number && item.account_number.toLowerCase().includes(q)) ||
+      (item.district && item.district.toLowerCase().includes(q));
+
+    return matchesMethod && matchesQuery;
+  });
+
+  const activePaymentCount = paymentDetails.filter((p) => p.is_active).length;
+  const bkashPaymentCount = paymentDetails.filter((p) => p.method_type === "bkash").length;
+  const nagadPaymentCount = paymentDetails.filter((p) => p.method_type === "nagad").length;
+  const bankPaymentCount = paymentDetails.filter((p) => p.method_type === "bank").length;
 
   // AUDIT LOG PAGINATION LOGIC (15 LOGS PER PAGE)
   const totalAuditPages = Math.ceil(auditLogs.length / logsPerPage) || 1;
@@ -1459,6 +1634,17 @@ export default function AdminDashboard() {
                       </div>
 
                       <div>
+                        <span className="text-slate-400 block">কোর্সের মাধ্যম:</span>
+                        <strong className="text-amber-400">
+                          {c.courseMode === "online"
+                            ? "🌐 অনলাইন"
+                            : c.courseMode === "offline"
+                            ? "🏫 অফলাইন"
+                            : "🌐 অনলাইন ও 🏫 অফলাইন"}
+                        </strong>
+                      </div>
+
+                      <div>
                         <span className="text-slate-400 block">ভিডিও প্রিভিউ:</span>
                         <strong className={c.videoUrl ? "text-emerald-400" : "text-slate-500"}>
                           {c.videoUrl ? "যুক্ত আছে" : "নেই"}
@@ -1606,6 +1792,24 @@ export default function AdminDashboard() {
                     <option value="standard">Standard Split Layout</option>
                     <option value="video_hero">Video-Focused Hero Layout</option>
                     <option value="modern_split">Modern Tabbed Layout</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-300 block mb-1">কোর্সের মাধ্যম / ফরম্যাট (Mode):*</label>
+                  <select
+                    value={newCourse.courseMode || "both"}
+                    onChange={(e) =>
+                      setNewCourse({
+                        ...newCourse,
+                        courseMode: e.target.value as any,
+                      })
+                    }
+                    className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
+                  >
+                    <option value="both">🌐 + 🏫 অনলাইন ও অফলাইন (উভয়ই)</option>
+                    <option value="online">🌐 শুধুমাত্র অনলাইন (Online Only)</option>
+                    <option value="offline">🏫 শুধুমাত্র অফলাইন (Offline Only)</option>
                   </select>
                 </div>
 
@@ -2062,6 +2266,280 @@ export default function AdminDashboard() {
             </div>
           </section>
         )}
+
+        {/* PAYMENT DETAILS MANAGEMENT TAB */}
+        {activeTab === "payment" && (
+          <section className="space-y-8 animate-in fade-in duration-200">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-white/10 pb-4 gap-4">
+              <div>
+                <h2 className="text-xl font-black text-white flex items-center gap-2">
+                  <CreditCard className="w-6 h-6 text-[#F59E0B]" />
+                  <span>শিক্ষার্থীদের পেমেন্ট অ্যাকাউন্ট ও নম্বর পরিচালনা (Payment Details)</span>
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  bKash (Personal/Agent/Merchant), Nagad, Rocket এবং ব্যাংকের বিস্তারিত তথ্য (ব্যাংক নাম, অ্যাকাউন্ট নাম, অ্যাকাউন্ট নম্বর, শাখা, জেলা ও রাউটিং নম্বর) নিয়ন্ত্রণ করুন।
+                </p>
+              </div>
+              <DashboardHeader role="admin" />
+            </div>
+
+            {/* SUMMARY STAT CARDS */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-[#0D2038] border border-white/10 p-5 rounded-3xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-400">সক্রিয় পেমেন্ট অ্যাকাউন্ট</span>
+                  <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
+                </div>
+                <p className="text-2xl font-black text-emerald-400">{activePaymentCount}টি</p>
+                <span className="text-[10px] text-slate-400 font-bold block">শিক্ষার্থীরা ভর্তি পোর্টালে দেখবে</span>
+              </div>
+
+              <div className="bg-[#0D2038] border border-white/10 p-5 rounded-3xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-400">bKash (বিকাশ) অ্যাকাউন্ট</span>
+                  <div className="p-2 rounded-xl bg-pink-500/10 text-pink-400 border border-pink-500/20">
+                    <Phone className="w-5 h-5" />
+                  </div>
+                </div>
+                <p className="text-2xl font-black text-pink-400">{bkashPaymentCount}টি</p>
+                <span className="text-[10px] text-pink-300 font-bold block">পার্সোনাল, এজেন্ট ও মার্চেন্ট</span>
+              </div>
+
+              <div className="bg-[#0D2038] border border-white/10 p-5 rounded-3xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-400">Nagad (নগদ) অ্যাকাউন্ট</span>
+                  <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    <Phone className="w-5 h-5" />
+                  </div>
+                </div>
+                <p className="text-2xl font-black text-amber-400">{nagadPaymentCount}টি</p>
+                <span className="text-[10px] text-amber-300 font-bold block">পার্সোনাল ও মার্চেন্ট নম্বর</span>
+              </div>
+
+              <div className="bg-[#0D2038] border border-white/10 p-5 rounded-3xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-400">ব্যাংক অ্যাকাউন্ট তথ্য</span>
+                  <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                    <Landmark className="w-5 h-5" />
+                  </div>
+                </div>
+                <p className="text-2xl font-black text-blue-400">{bankPaymentCount}টি</p>
+                <span className="text-[10px] text-blue-300 font-bold block">EFT/NPSB ব্যাংক ট্রান্সফার</span>
+              </div>
+            </div>
+
+            {/* FILTER BAR & ADD ACTION */}
+            <div className="bg-[#0D2038] border border-white/10 p-4 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-4">
+              {/* Filter Pills */}
+              <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                {[
+                  { id: "all", label: "সকল অ্যাকাউন্ট" },
+                  { id: "bkash", label: "bKash (বিকাশ)" },
+                  { id: "nagad", label: "Nagad (নগদ)" },
+                  { id: "bank", label: "কার্ড / ব্যাংক" },
+                ].map((f) => (
+                  <button
+                    key={f.id}
+                    onClick={() => setPaymentMethodFilter(f.id)}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                      paymentMethodFilter === f.id
+                        ? "bg-[#F59E0B] text-black shadow-lg"
+                        : "bg-[#07182E] text-slate-300 hover:text-white border border-white/10"
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Search & Add Button */}
+              <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                <div className="relative w-full sm:w-64">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="নম্বর, ব্যাংক বা শিরোনাম খুঁজুন..."
+                    value={paymentSearchQuery}
+                    onChange={(e) => setPaymentSearchQuery(e.target.value)}
+                    className="w-full bg-[#07182E] border border-white/10 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 outline-none focus:border-[#F59E0B]"
+                  />
+                </div>
+
+                <button
+                  onClick={handleOpenAddPaymentModal}
+                  className="w-full sm:w-auto px-4 py-2 bg-gradient-to-r from-[#F59E0B] to-[#FACC15] text-black rounded-xl text-xs font-black flex items-center justify-center gap-2 shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all shrink-0"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>নতুন পেমেন্ট অ্যাকাউন্ট যুক্ত করুন</span>
+                </button>
+              </div>
+            </div>
+
+            {/* PAYMENT CARDS GRID */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {filteredPaymentDetails.length > 0 ? (
+                filteredPaymentDetails.map((item) => {
+                  const isBkash = item.method_type === "bkash";
+                  const isNagad = item.method_type === "nagad";
+                  const isBank = item.method_type === "bank";
+
+                  return (
+                    <div
+                      key={item.id}
+                      className={`bg-[#0D2038] border rounded-3xl p-6 space-y-5 shadow-xl relative transition-all ${
+                        item.is_active ? "border-white/10 hover:border-[#F59E0B]/50" : "border-red-500/20 opacity-70"
+                      }`}
+                    >
+                      {/* Card Header */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {/* Method Badge */}
+                            <span
+                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                                isBkash
+                                  ? "bg-pink-500/10 text-pink-400 border-pink-500/30"
+                                  : isNagad
+                                  ? "bg-amber-500/10 text-amber-400 border-amber-500/30"
+                                  : isBank
+                                  ? "bg-blue-500/10 text-blue-400 border-blue-500/30"
+                                  : "bg-purple-500/10 text-purple-400 border-purple-500/30"
+                              }`}
+                            >
+                              {item.method_type}
+                            </span>
+
+                            {/* Account Category Badge */}
+                            {item.account_type && (
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/5 text-slate-300 border border-white/10 capitalize">
+                                {item.account_type === "personal"
+                                  ? "পার্সোনাল (Personal)"
+                                  : item.account_type === "agent"
+                                  ? "এজেন্ট (Agent)"
+                                  : item.account_type === "merchant"
+                                  ? "মার্চেন্ট / পেমেন্ট"
+                                  : "ব্যাংক অ্যাকাউন্ট"}
+                              </span>
+                            )}
+
+                            {/* Active/Inactive Status */}
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 ${
+                                item.is_active
+                                  ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
+                                  : "bg-red-500/10 text-red-400 border border-red-500/30"
+                              }`}
+                            >
+                              <span className={`w-1.5 h-1.5 rounded-full ${item.is_active ? "bg-emerald-400 animate-pulse" : "bg-red-400"}`} />
+                              <span>{item.is_active ? "সক্রিয়" : "নিষ্ক্রিয়"}</span>
+                            </span>
+                          </div>
+
+                          <h3 className="text-base font-bold text-white pt-1">{item.title}</h3>
+                        </div>
+                      </div>
+
+                      {/* Details Section */}
+                      {isBank ? (
+                        /* BANK DETAILS DISPLAY */
+                        <div className="bg-[#07182E] p-4 rounded-2xl border border-white/5 space-y-2 text-xs">
+                          <div className="flex justify-between border-b border-white/5 pb-1.5">
+                            <span className="text-slate-400 font-medium">ব্যাংকের নাম:</span>
+                            <span className="text-white font-bold">{item.bank_name || "N/A"}</span>
+                          </div>
+                          <div className="flex justify-between border-b border-white/5 pb-1.5">
+                            <span className="text-slate-400 font-medium">হিসাবধারীর নাম (Account Name):</span>
+                            <span className="text-[#F59E0B] font-bold">{item.account_holder_name || "N/A"}</span>
+                          </div>
+                          <div className="flex justify-between border-b border-white/5 pb-1.5">
+                            <span className="text-slate-400 font-medium">অ্যাকাউন্ট নম্বর:</span>
+                            <span className="text-white font-mono font-extrabold text-sm">{item.account_number || "N/A"}</span>
+                          </div>
+                          <div className="flex justify-between border-b border-white/5 pb-1.5">
+                            <span className="text-slate-400 font-medium">শাখা (Branch) ও জেলা:</span>
+                            <span className="text-slate-300 font-medium">
+                              {item.branch_name ? `${item.branch_name}, ${item.district || ""}` : item.district || "N/A"}
+                            </span>
+                          </div>
+                          {item.routing_number && (
+                            <div className="flex justify-between">
+                              <span className="text-slate-400 font-medium">রাউটিং নম্বর (Routing No):</span>
+                              <span className="text-emerald-400 font-mono font-bold">{item.routing_number}</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        /* MOBILE BANKING DETAILS DISPLAY */
+                        <div className="bg-[#07182E] p-4 rounded-2xl border border-white/5 space-y-2">
+                          <span className="text-[11px] text-slate-400 block font-medium">
+                            পেমেন্ট / ক্যাশ আউট / সেন্ড মানি নম্বর:
+                          </span>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xl font-black font-mono text-[#F59E0B] tracking-wider">
+                              {item.mobile_number || "নম্বর প্রদান করা হয়নি"}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Instructions */}
+                      {item.instructions && (
+                        <div className="text-xs text-slate-300 bg-white/5 p-3 rounded-xl border border-white/5 space-y-1">
+                          <span className="text-[10px] font-bold text-[#FACC15] uppercase tracking-wider block">
+                            শিক্ষার্থীদের জন্য নির্দেশনা:
+                          </span>
+                          <p className="leading-relaxed">{item.instructions}</p>
+                        </div>
+                      )}
+
+                      {/* Actions Footer */}
+                      <div className="pt-3 border-t border-white/5 flex items-center justify-between text-xs">
+                        <button
+                          onClick={() => handleTogglePaymentStatus(item.id, item.is_active, item.title)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold transition-all ${
+                            item.is_active
+                              ? "bg-amber-500/10 text-amber-300 hover:bg-amber-500/20"
+                              : "bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
+                          }`}
+                        >
+                          {item.is_active ? <ToggleRight className="w-4 h-4 text-amber-400" /> : <ToggleLeft className="w-4 h-4 text-emerald-400" />}
+                          <span>{item.is_active ? "নিষ্ক্রিয় করুন" : "সক্রিয় করুন"}</span>
+                        </button>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleOpenEditPaymentModal(item)}
+                            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-all"
+                            title="এডিট করুন"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeletePayment(item.id, item.title)}
+                            className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all"
+                            title="ডিলিট করুন"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="col-span-full text-center py-16 bg-[#0D2038] rounded-3xl border border-white/10 space-y-3">
+                  <CreditCard className="w-12 h-12 text-slate-600 mx-auto" />
+                  <p className="text-slate-400 text-sm font-medium">
+                    কোনো পেমেন্ট অ্যাকাউন্ট পাওয়া যায়নি। "+ নতুন পেমেন্ট অ্যাকাউন্ট যুক্ত করুন" বাটনে ক্লিক করে তথ্য যোগ করুন।
+                  </p>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
       </main>
 
       {/* ADD NEW EXPENSE PAYOUT MODAL */}
@@ -2351,6 +2829,24 @@ export default function AdminDashboard() {
               </div>
 
               <div>
+                <label className="font-bold text-slate-300 block mb-1">কোর্সের মাধ্যম / ফরম্যাট (Mode):*</label>
+                <select
+                  value={editingCourse.courseMode || "both"}
+                  onChange={(e) =>
+                    setEditingCourse({
+                      ...editingCourse,
+                      courseMode: e.target.value as any,
+                    })
+                  }
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
+                >
+                  <option value="both">🌐 + 🏫 অনলাইন ও অফলাইন (উভয়ই)</option>
+                  <option value="online">🌐 শুধুমাত্র অনলাইন (Online Only)</option>
+                  <option value="offline">🏫 শুধুমাত্র অফলাইন (Offline Only)</option>
+                </select>
+              </div>
+
+              <div>
                 <label className="font-bold text-slate-300 block mb-1">ভিডিও লিংক (YouTube / Vimeo):</label>
                 <input
                   type="url"
@@ -2580,6 +3076,229 @@ export default function AdminDashboard() {
                   className="w-1/2 py-3 bg-[#F59E0B] text-[#000000] font-bold rounded-xl hover:brightness-110"
                 >
                   সেভ করুন
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ADD / EDIT PAYMENT DETAIL MODAL */}
+      {isPaymentModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-[#0D2038] border border-white/15 rounded-3xl w-full max-w-xl p-6 sm:p-8 space-y-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setIsPaymentModalOpen(false)}
+              className="absolute top-6 right-6 p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#F59E0B]/10 border border-[#F59E0B]/30 text-[#F59E0B] text-[11px] font-bold">
+                <CreditCard className="w-3.5 h-3.5" />
+                <span>পেমেন্ট অ্যাকাউন্ট ম্যানেজার</span>
+              </div>
+              <h3 className="text-xl font-bold text-white">
+                {editingPayment ? "পেমেন্ট অ্যাকাউন্টের তথ্য এডিট করুন" : "নতুন পেমেন্ট অ্যাকাউন্ট যুক্ত করুন"}
+              </h3>
+              <p className="text-xs text-slate-300">
+                ভর্তি ফর্মে শিক্ষার্থীদের দেখানোর জন্য মোবাইল ব্যাংকিং অথবা ব্যাংক ডিপোজিটের সঠিক তথ্য পূরণ করুন।
+              </p>
+            </div>
+
+            <form onSubmit={handleSavePaymentForm} className="space-y-4 text-xs">
+              {/* Payment Method Selector */}
+              <div className="space-y-1.5">
+                <label className="font-bold text-slate-300">পেমেন্ট মেথড টাইপ:*</label>
+                <select
+                  value={paymentForm.method_type}
+                  onChange={(e) => {
+                    const method = e.target.value as any;
+                    setPaymentForm((prev) => ({
+                      ...prev,
+                      method_type: method,
+                      account_type: method === "bank" ? "bank_account" : prev.account_type === "bank_account" ? "personal" : prev.account_type,
+                      title: prev.title || (method === "bkash" ? "bKash (বিকাশ) পার্সোনাল" : method === "nagad" ? "Nagad (নগদ) পার্সোনাল" : method === "bank" ? "ডাচ-বাংলা ব্যাংক লিমিটেড" : "পেমেন্ট নম্বর"),
+                    }));
+                  }}
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white focus:border-[#F59E0B] outline-none"
+                >
+                  <option value="bkash">bKash (বিকাশ)</option>
+                  <option value="nagad">Nagad (নগদ)</option>
+                  <option value="rocket">Rocket (রকেট)</option>
+                  <option value="bank">কার্ড / ব্যাংক (Bank Deposit / EFT)</option>
+                  <option value="other">অন্যান্য (Other Method)</option>
+                </select>
+              </div>
+
+              {/* Title / Label */}
+              <div className="space-y-1.5">
+                <label className="font-bold text-slate-300">পেমেন্ট অ্যাকাউন্ট শিরোনাম (Title):*</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="যেমন: bKash Personal 01 অথবা DBBL Bank Account"
+                  value={paymentForm.title}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, title: e.target.value })}
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white focus:border-[#F59E0B] outline-none"
+                />
+              </div>
+
+              {/* Dynamic Fields for Mobile Banking vs Bank */}
+              {paymentForm.method_type !== "bank" ? (
+                <>
+                  {/* Account Category (Personal / Agent / Merchant) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="font-bold text-slate-300">নম্বরের ধরণ (Category):*</label>
+                      <select
+                        value={paymentForm.account_type}
+                        onChange={(e) => setPaymentForm({ ...paymentForm, account_type: e.target.value as any })}
+                        className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white focus:border-[#F59E0B] outline-none"
+                      >
+                        <option value="personal">পার্সোনাল (Personal)</option>
+                        <option value="agent">এজেন্ট (Agent)</option>
+                        <option value="merchant">মার্চেন্ট / পেমেন্ট (Merchant/Payment)</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="font-bold text-slate-300">মোবাইল পেমেন্ট নম্বর:*</label>
+                      <input
+                        type="tel"
+                        required
+                        placeholder="যেমন: ০১৭xxxxxxxx"
+                        value={paymentForm.mobile_number}
+                        onChange={(e) => setPaymentForm({ ...paymentForm, mobile_number: e.target.value })}
+                        className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white font-mono placeholder-slate-500 focus:border-[#F59E0B] outline-none"
+                      />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                /* BANK DETAILS FIELDS */
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="font-bold text-slate-300">ব্যাংকের নাম (Bank Name):*</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="যেমন: Dutch-Bangla Bank PLC"
+                        value={paymentForm.bank_name}
+                        onChange={(e) => setPaymentForm({ ...paymentForm, bank_name: e.target.value })}
+                        className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white focus:border-[#F59E0B] outline-none"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="font-bold text-slate-300">হিসাবধারীর নাম (Account Holder Name):*</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="যেমন: Durbar Academy Ltd."
+                        value={paymentForm.account_holder_name}
+                        onChange={(e) => setPaymentForm({ ...paymentForm, account_holder_name: e.target.value })}
+                        className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white focus:border-[#F59E0B] outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="font-bold text-slate-300">ব্যাংক অ্যাকাউন্ট নম্বর:*</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="যেমন: 164.110.9876543"
+                        value={paymentForm.account_number}
+                        onChange={(e) => setPaymentForm({ ...paymentForm, account_number: e.target.value })}
+                        className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white font-mono focus:border-[#F59E0B] outline-none"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="font-bold text-slate-300">শাখার নাম (Branch Name):</label>
+                      <input
+                        type="text"
+                        placeholder="যেমন: Dhanmondi Branch"
+                        value={paymentForm.branch_name}
+                        onChange={(e) => setPaymentForm({ ...paymentForm, branch_name: e.target.value })}
+                        className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white focus:border-[#F59E0B] outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="font-bold text-slate-300">জেলা (District):</label>
+                      <input
+                        type="text"
+                        placeholder="যেমন: Dhaka"
+                        value={paymentForm.district}
+                        onChange={(e) => setPaymentForm({ ...paymentForm, district: e.target.value })}
+                        className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white focus:border-[#F59E0B] outline-none"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="font-bold text-slate-300">রাউটিং নম্বর (Routing No):</label>
+                        <span className="text-[10px] text-[#FACC15] font-semibold">(ঐচ্ছিক / Optional)</span>
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="যেমন: 090261111"
+                        value={paymentForm.routing_number}
+                        onChange={(e) => setPaymentForm({ ...paymentForm, routing_number: e.target.value })}
+                        className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white font-mono focus:border-[#F59E0B] outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Instructions / Notes */}
+              <div className="space-y-1.5">
+                <label className="font-bold text-slate-300">শিক্ষার্থীদের জন্য নির্দেশনাবলী / নোট:</label>
+                <textarea
+                  rows={2}
+                  placeholder="যেমন: সেন্ড মানি বা ক্যাশ আউট সম্পন্ন করার পর প্রাপ্ত TrxID ইনপুট বক্সে প্রদান করুন।"
+                  value={paymentForm.instructions}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, instructions: e.target.value })}
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white placeholder-slate-500 focus:border-[#F59E0B] outline-none"
+                />
+              </div>
+
+              {/* Active Toggle Checkbox */}
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="payment_active_toggle"
+                  checked={paymentForm.is_active}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, is_active: e.target.checked })}
+                  className="w-4 h-4 rounded accent-[#F59E0B]"
+                />
+                <label htmlFor="payment_active_toggle" className="font-bold text-white cursor-pointer select-none">
+                  ভর্তি ফর্মে এই পেমেন্ট নম্বর/অ্যাকাউন্টটি সক্রিয় (Active) রাখুন
+                </label>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setIsPaymentModalOpen(false)}
+                  className="w-1/2 py-3 bg-white/5 border border-white/10 text-slate-300 hover:text-white rounded-xl font-bold transition-all"
+                >
+                  বাতিল
+                </button>
+                <button
+                  type="submit"
+                  className="w-1/2 py-3 bg-gradient-to-r from-[#F59E0B] to-[#FACC15] text-black font-black rounded-xl hover:scale-[1.01] active:scale-[0.99] transition-all shadow-lg"
+                >
+                  {editingPayment ? "আপডেট করুন" : "সংরক্ষণ করুন"}
                 </button>
               </div>
             </form>

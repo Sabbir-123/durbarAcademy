@@ -306,10 +306,19 @@ export default function CoursesSliderSection({
                       <div className="absolute inset-0 bg-gradient-to-t from-[#0E2038] via-transparent to-black/40 card-image-overlay" />
 
                       {/* Category & Badge Overlay */}
-                      <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2">
-                        <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-[#07182E]/90 backdrop-blur-md text-[#F59E0B] border border-[#F59E0B]/40 course-badge">
-                          {course.categoryLabel}
-                        </span>
+                      <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-[#07182E]/90 backdrop-blur-md text-[#F59E0B] border border-[#F59E0B]/40 course-badge">
+                            {course.categoryLabel}
+                          </span>
+                          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/90 text-white backdrop-blur-md">
+                            {course.courseMode === "online"
+                              ? "🌐 অনলাইন"
+                              : course.courseMode === "offline"
+                              ? "🏫 অফলাইন"
+                              : "🌐 অনলাইন ও 🏫 অফলাইন"}
+                          </span>
+                        </div>
                         {course.discountBadge && (
                           <motion.span
                             animate={{ scale: [1, 1.05, 1] }}

@@ -6,6 +6,8 @@ import Footer from "@/components/Footer";
 import RegistrationModal from "@/components/RegistrationModal";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/utils/supabase/client";
 import { Course } from "@/data/courses";
 import { getStoredCourses, subscribeCoursesStore, syncCoursesFromSupabase } from "@/utils/courseStore";
 import {
@@ -19,6 +21,7 @@ import {
 } from "lucide-react";
 
 export default function CoursesPage() {
+  const router = useRouter();
   const [courses, setCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [activeCategory, setActiveCategory] = useState<string>("all");
@@ -50,10 +53,31 @@ export default function CoursesPage() {
       setCourses(getStoredCourses().filter((c) => c.published !== false));
       setIsLoading(false);
     });
+
+    // Check if user returned from login with a pending enrollment
+    if (typeof window !== "undefined") {
+      const pendingCourse = sessionStorage.getItem("pending_enroll_course");
+      if (pendingCourse) {
+        setRegisterInitialCourseId(pendingCourse);
+        setIsRegisterModalOpen(true);
+        sessionStorage.removeItem("pending_enroll_course");
+      }
+    }
+
     return () => unsubscribe();
   }, []);
 
-  const handleOpenRegisterModal = (courseId?: string) => {
+  const handleOpenRegisterModal = async (courseId?: string) => {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      if (courseId) {
+        sessionStorage.setItem("pending_enroll_course", courseId);
+      }
+      alert("কোর্সে ভর্তি হওয়ার জন্য অনুগ্রহ করে প্রথমে সাইন আপ বা লগইন করুন।");
+      router.push("/login?redirect=enroll");
+      return;
+    }
     setRegisterInitialCourseId(courseId);
     setIsRegisterModalOpen(true);
   };
@@ -255,10 +279,19 @@ export default function CoursesPage() {
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-[#0E2038] via-transparent to-black/40 card-image-overlay" />
 
-                        <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2">
-                          <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-[#07182E]/90 backdrop-blur-md text-[#F59E0B] border border-[#F59E0B]/40 course-badge">
-                            {course.categoryLabel}
-                          </span>
+                        <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-[#07182E]/90 backdrop-blur-md text-[#F59E0B] border border-[#F59E0B]/40 course-badge">
+                              {course.categoryLabel}
+                            </span>
+                            <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-500/90 text-white backdrop-blur-md">
+                              {course.courseMode === "online"
+                                ? "🌐 অনলাইন"
+                                : course.courseMode === "offline"
+                                ? "🏫 অফলাইন"
+                                : "🌐 অনলাইন ও 🏫 অফলাইন"}
+                            </span>
+                          </div>
                           {course.discountBadge && (
                             <motion.span
                               animate={{ scale: [1, 1.05, 1] }}

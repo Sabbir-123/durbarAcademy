@@ -46,39 +46,51 @@ export default function StudentDashboard() {
         setRestricted(true);
       }
 
-      // Fetch enrolled courses via mock data fallback if tables not seeded yet
+      // Fetch enrolled courses
       const { data: enrollments } = await supabase
         .from("enrollments")
         .select("courses(*)")
         .eq("student_id", user.id)
         .eq("status", "active");
 
-      // Set fallback if empty
       if (enrollments && enrollments.length > 0) {
         setCourses(enrollments.map((e: any) => e.courses));
-      } else {
-        setCourses([
-          { id: "c1", title: "বুয়েট ও সিকেআরইউইটি স্পেশাল অ্যাডমিশন ২০২৬", tagline: "ক্যাডেট ও ইঞ্জিনিয়ারিং লিডারশিপ প্রিপারেশন", progress: 68 },
-          { id: "c2", title: "ডিএমসি মেডিকেল ভর্তি প্রিপারেশন মাস্টারক্লাস", tagline: "সাইকোলজিক্যাল ও ওএমআর ভাইভা ড্রিল", progress: 42 },
+        setTests([
+          { id: "t1", title: "পদার্থবিজ্ঞান ১ম ও ২য় পত্র ফাইনাল মক টেস্ট", time_limit_minutes: 60, total_marks: 100 },
+          { id: "t2", title: "উচ্চতর গণিত ক্যালকুলাস ও ভেক্টর স্পেশাল ড্রিল", time_limit_minutes: 45, total_marks: 50 },
         ]);
+        setPayments([
+          { id: "p1", amount: 9500, payment_method: "bKash", transaction_reference: "BKX99882231", payment_date: "২৫ জুলাই, ২০২৬" },
+        ]);
+      } else {
+        try {
+          const rawLocalEnrolled = localStorage.getItem(`durbar_enrolled_${user.id}`);
+          if (rawLocalEnrolled) {
+            const parsed = JSON.parse(rawLocalEnrolled);
+            const list = Array.isArray(parsed) ? parsed : [];
+            setCourses(list);
+            if (list.length > 0) {
+              setTests([
+                { id: "t1", title: "পদার্থবিজ্ঞান ১ম ও ২য় পত্র ফাইনাল মক টেস্ট", time_limit_minutes: 60, total_marks: 100 },
+              ]);
+            } else {
+              setTests([]);
+              setPayments([]);
+              setTickets([]);
+            }
+          } else {
+            setCourses([]);
+            setTests([]);
+            setPayments([]);
+            setTickets([]);
+          }
+        } catch {
+          setCourses([]);
+          setTests([]);
+          setPayments([]);
+          setTickets([]);
+        }
       }
-
-      // Fetch active tests
-      setTests([
-        { id: "t1", title: "পদার্থবিজ্ঞান ১ম ও ২য় পত্র ফাইনাল মক টেস্ট", time_limit_minutes: 60, total_marks: 100 },
-        { id: "t2", title: "উচ্চতর গণিত ক্যালকুলাস ও ভেক্টর স্পেশাল ড্রিল", time_limit_minutes: 45, total_marks: 50 },
-      ]);
-
-      // Fetch payments log
-      setPayments([
-        { id: "p1", amount: 9500, payment_method: "bKash", transaction_reference: "BKX99882231", payment_date: "২৫ জুলাই, ২০২৬" },
-        { id: "p2", amount: 8900, payment_method: "Nagad", transaction_reference: "NGD22334411", payment_date: "২০ জুলাই, ২০২৬" },
-      ]);
-
-      // Fetch assistance requests
-      setTickets([
-        { id: "tk1", subject: "ক্যালকুলাস চ্যাপ্টার ৪ ডাউট সলভ", status: "open", created_at: "২৫ জুলাই, ২০২৬" },
-      ]);
     }
     loadData();
   }, []);
@@ -169,47 +181,72 @@ export default function StudentDashboard() {
         <section id="courses" className="space-y-4">
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
             <BookOpen className="w-5 h-5 text-[#F59E0B]" />
-            <span>আমার কোর্সসমূহ</span>
+            <span>আমার কোর্সসমূহ ({courses.length}টি)</span>
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {courses.map((course) => (
-              <div
-                key={course.id}
-                className="bg-[#0D2038] border border-white/10 rounded-3xl p-6 flex flex-col justify-between hover:border-[#F59E0B]/30 transition-all shadow-lg"
+          {courses.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {courses.map((course) => (
+                <div
+                  key={course.id}
+                  className="bg-[#0D2038] border border-white/10 rounded-3xl p-6 flex flex-col justify-between hover:border-[#F59E0B]/30 transition-all shadow-lg"
+                >
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <h3 className="text-lg font-bold text-white leading-snug">{course.title}</h3>
+                        <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
+                          {course.courseMode === "online"
+                            ? "🌐 অনলাইন"
+                            : course.courseMode === "offline"
+                            ? "🏫 অফলাইন"
+                            : "🌐 অনলাইন ও 🏫 অফলাইন"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400 mt-1">{course.tagline}</p>
+                    </div>
+
+                    {/* Progress bar */}
+                    <div className="space-y-1.5 pt-2">
+                      <div className="flex justify-between text-[11px] font-bold">
+                        <span className="text-slate-300">কোর্স অগ্রগতি</span>
+                        <span className="text-emerald-400">{course.progress || 0}% সম্পন্ন</span>
+                      </div>
+                      <div className="w-full h-2 bg-[#07182E] rounded-full overflow-hidden p-0.5 border border-white/5">
+                        <div
+                          className="h-full bg-gradient-to-r from-[#F59E0B] to-emerald-400 rounded-full"
+                          style={{ width: `${course.progress || 0}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-6 mt-6 border-t border-white/5 flex justify-end">
+                    <Link
+                      href={`/student/courses/${course.id}`}
+                      className="px-5 py-2.5 text-xs font-bold text-black bg-[#F59E0B] rounded-xl hover:bg-[#FACC15]"
+                    >
+                      ক্লাসে প্রবেশ করুন
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-[#0D2038] border border-white/10 rounded-3xl p-8 text-center space-y-4">
+              <BookOpen className="w-12 h-12 text-slate-500 mx-auto" />
+              <h3 className="text-base font-bold text-white">আপনি এখনো কোনো কোর্সে এনরোল করেননি</h3>
+              <p className="text-xs text-slate-400 max-w-md mx-auto">
+                আমাদের নতুন সকল ডিফেন্স ও মেধা প্রস্তুতি কোর্স দেখতে কোর্স ক্যাটালগে প্রবেশ করুন এবং আবেদন সম্পন্ন করুন।
+              </p>
+              <Link
+                href="/courses"
+                className="inline-block px-5 py-2.5 text-xs font-bold text-black bg-[#F59E0B] rounded-xl hover:bg-[#FACC15] transition-all"
               >
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-lg font-bold text-white leading-snug">{course.title}</h3>
-                    <p className="text-xs text-slate-400 mt-1">{course.tagline}</p>
-                  </div>
-
-                  {/* Progress bar */}
-                  <div className="space-y-1.5 pt-2">
-                    <div className="flex justify-between text-[11px] font-bold">
-                      <span className="text-slate-300">কোর্স অগ্রগতি</span>
-                      <span className="text-emerald-400">{course.progress || 0}% সম্পন্ন</span>
-                    </div>
-                    <div className="w-full h-2 bg-[#07182E] rounded-full overflow-hidden p-0.5 border border-white/5">
-                      <div
-                        className="h-full bg-gradient-to-r from-[#F59E0B] to-emerald-400 rounded-full"
-                        style={{ width: `${course.progress || 0}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-6 mt-6 border-t border-white/5 flex justify-end">
-                  <Link
-                    href={`/student/courses/${course.id}`}
-                    className="px-5 py-2.5 text-xs font-bold text-black bg-[#F59E0B] rounded-xl hover:bg-[#FACC15]"
-                  >
-                    ক্লাসে প্রবেশ করুন
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
+                কোর্সসমূহ দেখুন
+              </Link>
+            </div>
+          )}
         </section>
 
         {/* Dynamic CBT Tests Section */}

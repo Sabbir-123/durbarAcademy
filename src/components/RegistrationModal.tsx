@@ -2,8 +2,16 @@
 
 import { useState, useEffect } from "react";
 import { COURSES } from "@/data/courses";
-import { X, CheckCircle2, ShieldCheck, CreditCard, Sparkles, PhoneCall } from "lucide-react";
+import { getStoredCourses } from "@/utils/courseStore";
+import { X, CheckCircle2, ShieldCheck, CreditCard, Sparkles, PhoneCall, Copy, Check, Info } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
+import {
+  getStoredPaymentDetails,
+  subscribePaymentDetailsStore,
+  syncPaymentDetailsFromSupabase,
+  fetchPaymentDetailsFromDatabase,
+  PaymentDetail,
+} from "@/utils/paymentDetailStore";
 
 interface RegistrationModalProps {
   initialCourseId?: string;
@@ -11,7 +19,7 @@ interface RegistrationModalProps {
 }
 
 export default function RegistrationModal({ initialCourseId, onClose }: RegistrationModalProps) {
-  const [courses, setCourses] = useState<any[]>(COURSES);
+  const [courses, setCourses] = useState<any[]>(getStoredCourses());
   const [branches, setBranches] = useState<any[]>([
     { id: "online", label: "অনলাইন" },
     { id: "dhaka", label: "ঢাকা শাখা" },
@@ -24,6 +32,9 @@ export default function RegistrationModal({ initialCourseId, onClose }: Registra
     { id: "card", label: "কার্ড / ব্যাংক" },
   ]);
 
+  const [paymentDetailsList, setPaymentDetailsList] = useState<PaymentDetail[]>(getStoredPaymentDetails());
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
   const [selectedCourseId, setSelectedCourseId] = useState<string>("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -31,6 +42,7 @@ export default function RegistrationModal({ initialCourseId, onClose }: Registra
   const [branch, setBranch] = useState("online");
   const [paymentMethod, setPaymentMethod] = useState("bkash");
   const [trxId, setTrxId] = useState("");
+  const [trackingId, setTrackingId] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -39,6 +51,7 @@ export default function RegistrationModal({ initialCourseId, onClose }: Registra
   useEffect(() => {
     async function loadData() {
       try {
+        const localCourses = getStoredCourses();
         // Fetch courses
         const { data: dbCourses } = await supabase
           .from("courses")
@@ -47,13 +60,23 @@ export default function RegistrationModal({ initialCourseId, onClose }: Registra
 
         if (dbCourses && dbCourses.length > 0) {
           setCourses(
-            dbCourses.map((c) => ({
-              id: c.id,
-              title: c.title,
-              price: Number(c.price),
-              slug: c.slug,
-            }))
+            dbCourses.map((c) => {
+              let extraData: any = {};
+              if (c.description && c.description.startsWith("{")) {
+                try { extraData = JSON.parse(c.description); } catch (e) {}
+              }
+              const localMatch = localCourses.find((lc) => lc.id === c.id || (lc as any).slug === c.slug);
+              return {
+                id: c.id,
+                title: c.title,
+                price: Number(c.price),
+                slug: c.slug,
+                courseMode: extraData.courseMode || localMatch?.courseMode || "both",
+              };
+            })
           );
+        } else {
+          setCourses(localCourses);
         }
 
         // Fetch branches
@@ -106,20 +129,70 @@ export default function RegistrationModal({ initialCourseId, onClose }: Registra
     }
   }, [courses, initialCourseId]);
 
-  // Set default branch and payment method once loaded
+  const selectedCourse = courses.find((c) => c.id === selectedCourseId) || courses[0] || COURSES[0];
+  const courseMode = selectedCourse?.courseMode || "both";
+
+  const visibleBranches = branches.filter((b) => {
+    if (courseMode === "online") return b.id === "online";
+    if (courseMode === "offline") return b.id !== "online";
+    return true;
+  });
+
+  // Set default branch when visibleBranches change
   useEffect(() => {
-    if (branches.length > 0 && !branches.some((b) => b.id === branch)) {
-      setBranch(branches[0].id);
+    if (visibleBranches.length > 0 && !visibleBranches.some((b) => b.id === branch)) {
+      setBranch(visibleBranches[0].id);
     }
-  }, [branches]);
+  }, [visibleBranches, branch]);
+
+  useEffect(() => {
+    async function loadPaymentDetailsFromDb() {
+      const items = await fetchPaymentDetailsFromDatabase();
+      if (items) {
+        setPaymentDetailsList(items);
+      }
+    }
+
+    loadPaymentDetailsFromDb();
+
+    // Subscribe to Postgres Realtime changes on payment_details table directly from Supabase
+    const channel = supabase
+      .channel("payment_details_db_changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "payment_details" }, () => {
+        loadPaymentDetailsFromDb();
+      })
+      .subscribe();
+
+    const unsubStore = subscribePaymentDetailsStore(() => {
+      loadPaymentDetailsFromDb();
+    });
+
+    return () => {
+      supabase.removeChannel(channel);
+      unsubStore();
+    };
+  }, []);
+
+  const handleCopyText = (id: string, textToCopy: string) => {
+    if (!textToCopy) return;
+    navigator.clipboard.writeText(textToCopy);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const activeAccountsForSelectedMethod = paymentDetailsList.filter((p) => {
+    if (!p.is_active) return false;
+    if (paymentMethod === "bkash") return p.method_type === "bkash";
+    if (paymentMethod === "nagad") return p.method_type === "nagad";
+    if (paymentMethod === "card" || paymentMethod === "bank") return p.method_type === "bank";
+    return p.method_type === paymentMethod;
+  });
 
   useEffect(() => {
     if (paymentMethods.length > 0 && !paymentMethods.some((p) => p.id === paymentMethod)) {
       setPaymentMethod(paymentMethods[0].id);
     }
   }, [paymentMethods]);
-
-  const selectedCourse = courses.find((c) => c.id === selectedCourseId) || courses[0] || COURSES[0];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -131,6 +204,8 @@ export default function RegistrationModal({ initialCourseId, onClose }: Registra
       alert("অনুগ্রহ করে আপনার পেমেন্ট ট্রানজেকশন আইডি (TrxID) বা প্রেরক মোবাইল নম্বর প্রদান করুন।");
       return;
     }
+    const generatedId = `DA-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+    setTrackingId(generatedId);
     setIsSuccess(true);
   };
 
@@ -217,9 +292,14 @@ export default function RegistrationModal({ initialCourseId, onClose }: Registra
 
             {/* Branch Preference */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300">পছন্দের শাখা / প্ল্যাটফর্ম:</label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-300">পছন্দের শাখা / প্ল্যাটফর্ম:</label>
+                <span className="text-[10px] text-amber-400 font-bold">
+                  {courseMode === "online" ? "🌐 শুধুমাত্র অনলাইন" : courseMode === "offline" ? "🏫 শুধুমাত্র অফলাইন" : "🌐 অনলাইন ও 🏫 অফলাইন"}
+                </span>
+              </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {branches.map((b) => (
+                {visibleBranches.map((b) => (
                   <button
                     type="button"
                     key={b.id}
@@ -256,6 +336,85 @@ export default function RegistrationModal({ initialCourseId, onClose }: Registra
                 ))}
               </div>
             </div>
+
+            {/* Dynamic Payment Details Display Box */}
+            {activeAccountsForSelectedMethod.length > 0 ? (
+              <div className="space-y-2 bg-[#07182E] p-3.5 rounded-2xl border border-[#F59E0B]/30 shadow-inner">
+                <span className="text-[10px] font-bold text-[#FACC15] uppercase tracking-wider block">
+                  অফিসিয়াল পেমেন্ট অ্যাকাউন্ট তথ্য (Send Fee Here):
+                </span>
+                <div className="space-y-2.5">
+                  {activeAccountsForSelectedMethod.map((acc) => (
+                    <div key={acc.id} className="p-3 bg-[#0D2038] rounded-xl border border-white/10 space-y-1.5 text-xs">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-white text-xs">{acc.title}</span>
+                          {acc.account_type && (
+                            <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-[#F59E0B]/20 text-[#F59E0B] capitalize">
+                              {acc.account_type === "personal"
+                                ? "পার্সোনাল"
+                                : acc.account_type === "agent"
+                                ? "এজেন্ট"
+                                : acc.account_type === "merchant"
+                                ? "মার্চেন্ট / পেমেন্ট"
+                                : "ব্যাংক"}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Copy button */}
+                        {(acc.mobile_number || acc.account_number) && (
+                          <button
+                            type="button"
+                            onClick={() => handleCopyText(acc.id, acc.mobile_number || acc.account_number || "")}
+                            className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white text-[10px] font-bold flex items-center gap-1 transition-all shrink-0"
+                          >
+                            {copiedId === acc.id ? (
+                              <>
+                                <Check className="w-3 h-3 text-emerald-400" />
+                                <span className="text-emerald-400">কপি হয়েছে!</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3 h-3 text-[#F59E0B]" />
+                                <span>কপি করুন</span>
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
+
+                      {acc.method_type === "bank" ? (
+                        <div className="space-y-1 text-[11px] text-slate-300">
+                          <div>ব্যাংক: <strong className="text-white">{acc.bank_name}</strong></div>
+                          <div>হিসাবধারীর নাম: <strong className="text-[#F59E0B]">{acc.account_holder_name}</strong></div>
+                          <div>হিসাব নম্বর: <strong className="text-white font-mono">{acc.account_number}</strong></div>
+                          <div>শাখা ও জেলা: <span className="text-slate-300">{acc.branch_name ? `${acc.branch_name}, ${acc.district || ""}` : acc.district || ""}</span></div>
+                          {acc.routing_number && <div>রাউটিং নম্বর: <strong className="text-emerald-400 font-mono">{acc.routing_number}</strong></div>}
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between pt-0.5">
+                          <span className="text-slate-400 text-[11px]">পেমেন্ট নম্বর:</span>
+                          <span className="text-base font-black font-mono text-[#F59E0B]">
+                            {acc.mobile_number}
+                          </span>
+                        </div>
+                      )}
+
+                      {acc.instructions && (
+                        <p className="text-[10px] text-slate-400 border-t border-white/5 pt-1 mt-1 leading-relaxed">
+                          💡 {acc.instructions}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="bg-[#07182E] p-3 rounded-xl border border-white/10 text-center text-xs text-slate-400">
+                এই পেমেন্ট মেথডের জন্য সক্রিয় কোনো নম্বর পাওয়া যায়নি। সহায়তার জন্য ১৬৮৯৯ কল করুন।
+              </div>
+            )}
 
             {/* Transaction ID / Payment Number Field */}
             <div className="space-y-1.5">
@@ -302,41 +461,54 @@ export default function RegistrationModal({ initialCourseId, onClose }: Registra
             </div>
 
             <div className="space-y-2">
-              <h3 className="text-2xl font-extrabold text-white">ভর্তি আবেদন সফল হয়েছে!</h3>
-              <p className="text-xs text-slate-300 max-w-md mx-auto">
-                অভিনন্দন <span className="text-[#F59E0B] font-bold">{name}</span>! দুর্বার একাডেমি পরিবারের সাথে তোমার যাত্রা শুরু হতে চলেছে।
+              <h3 className="text-2xl font-extrabold text-white">ভর্তি আবেদন সফলভাবে গৃহীত হয়েছে!</h3>
+              <p className="text-xs text-slate-300 max-w-md mx-auto leading-relaxed">
+                অভিনন্দন <span className="text-[#F59E0B] font-bold">{name}</span>! আমাদের টিম মেম্বার কর্তৃক আপনার পেমেন্ট ট্রানজেকশন যাঁচাই করে অতিসত্ত্বর আপনার ভর্তি চূড়ান্ত নিশ্চিত করা হবে।
               </p>
             </div>
 
-            <div className="bg-[#07182E] p-4 rounded-2xl border border-white/10 text-xs space-y-2 text-left max-w-md mx-auto">
-              <div className="flex justify-between border-b border-white/5 pb-1.5">
+            <div className="bg-[#07182E] p-4 rounded-2xl border border-white/10 text-xs space-y-3 text-left max-w-md mx-auto">
+              <div className="flex justify-between border-b border-white/5 pb-2">
                 <span className="text-slate-400">রেফারেন্স ট্র্যাকিং আইডি:</span>
-                <span className="text-[#F59E0B] font-bold">DA-2026-8849</span>
+                <span className="text-[#F59E0B] font-bold font-mono">{trackingId || "DA-2026-8849"}</span>
               </div>
-              <div className="flex justify-between border-b border-white/5 pb-1.5">
+              <div className="flex justify-between border-b border-white/5 pb-2">
                 <span className="text-slate-400">মনোনীত কোর্স:</span>
                 <span className="text-white font-bold">{selectedCourse.title}</span>
               </div>
-              <div className="flex justify-between border-b border-white/5 pb-1.5">
+              <div className="flex justify-between border-b border-white/5 pb-2">
                 <span className="text-slate-400">পেমেন্ট মেথড ও TrxID:</span>
                 <span className="text-amber-400 font-bold uppercase">{paymentMethod} ({trxId})</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">শাখা:</span>
+              <div className="flex justify-between border-b border-white/5 pb-2">
+                <span className="text-slate-400">মনোনীত শাখা:</span>
                 <span className="text-emerald-400 font-bold capitalize">{branch}</span>
+              </div>
+              
+              {/* COURSE START DATE DISPLAY */}
+              <div className="p-3 bg-[#0D2038] rounded-xl border border-[#F59E0B]/30 space-y-1">
+                <span className="text-[10px] font-bold text-[#FACC15] uppercase tracking-wider block">
+                  🗓️ ওরিয়েন্টেশন ও ক্লাস শুরুর তারিখ:
+                </span>
+                <p className="text-xs font-bold text-white">
+                  {selectedCourse.startDate || "১৫ আগস্ট, ২০২৬"} (এডমিন কর্তৃক নির্ধারিত)
+                </p>
               </div>
             </div>
 
-            <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
-              <PhoneCall className="w-4 h-4 text-[#F59E0B]" />
-              <span>আমাদের প্রতিনিধি ২ ঘণ্টার মধ্যে তোমাকে কল করবেন (১৬৮৯৯)।</span>
+            <div className="flex items-center justify-center gap-2 text-xs text-slate-400 bg-white/5 p-3 rounded-xl">
+              <PhoneCall className="w-4 h-4 text-[#F59E0B] shrink-0" />
+              <span>আমাদের একাডেমি প্রতিনিধি পেমেন্ট যাঁচাই শেষে আপনাকে কল দেবেন (১৬৮৯৯)।</span>
             </div>
 
             <button
-              onClick={onClose}
-              className="w-full py-3 text-xs font-bold text-black bg-[#F59E0B] rounded-xl hover:bg-[#FACC15]"
+              onClick={() => {
+                onClose();
+                window.location.href = "/complete-profile";
+              }}
+              className="w-full py-3.5 text-xs font-black text-black bg-gradient-to-r from-[#F59E0B] via-[#FACC15] to-[#F59E0B] rounded-xl shadow-lg hover:scale-[1.01] transition-all"
             >
-              ড্যাশবোর্ডে ফিরে যান
+              প্রোফাইল তথ্য সম্পূর্ণ করুন ও ড্যাশবোর্ডে যান
             </button>
           </div>
         )}

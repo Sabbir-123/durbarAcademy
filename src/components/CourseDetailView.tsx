@@ -121,6 +121,15 @@ export default function CourseDetailView({ courseId }: CourseDetailViewProps) {
                   {course.tagline}
                 </p>
                 <div className="flex flex-wrap gap-4 pt-2 text-xs text-slate-300">
+                  <span className="course-detail-inner-item flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0E2038] border border-emerald-500/30 text-emerald-400 font-bold">
+                    <span>
+                      {course.courseMode === "online"
+                        ? "🌐 শুধুমাত্র অনলাইন"
+                        : course.courseMode === "offline"
+                        ? "🏫 শুধুমাত্র অফলাইন"
+                        : "🌐 অনলাইন ও 🏫 অফলাইন"}
+                    </span>
+                  </span>
                   <span className="course-detail-inner-item flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0E2038] border border-white/10">
                     <Clock className="w-4 h-4 text-[#F59E0B]" />
                     {course.duration}
@@ -191,6 +200,15 @@ export default function CourseDetailView({ courseId }: CourseDetailViewProps) {
                 </p>
 
                 <div className="flex flex-wrap gap-4 pt-3 text-xs text-slate-300">
+                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#0E2038] border border-emerald-500/30 text-emerald-400 font-bold">
+                    <span>
+                      {course.courseMode === "online"
+                        ? "🌐 শুধুমাত্র অনলাইন"
+                        : course.courseMode === "offline"
+                        ? "🏫 শুধুমাত্র অফলাইন"
+                        : "🌐 অনলাইন ও 🏫 অফলাইন"}
+                    </span>
+                  </div>
                   <div className="flex items-center gap-1.5">
                     <Clock className="w-4 h-4 text-[#F59E0B]" />
                     <span>সময়সীমা: <strong>{course.duration}</strong></span>

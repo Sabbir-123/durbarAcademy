@@ -17,12 +17,26 @@ import SyllabusModal from "@/components/SyllabusModal";
 import RegistrationModal from "@/components/RegistrationModal";
 import { Course } from "@/data/courses";
 
+import { useRouter } from "next/navigation";
+import { createClient } from "@/utils/supabase/client";
+
 export default function Home() {
   const [syllabusCourse, setSyllabusCourse] = useState<Course | null>(null);
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState<boolean>(false);
   const [registerInitialCourseId, setRegisterInitialCourseId] = useState<string | undefined>(undefined);
+  const router = useRouter();
+  const supabase = createClient();
 
-  const handleOpenRegisterModal = (courseId?: string) => {
+  const handleOpenRegisterModal = async (courseId?: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      if (courseId) {
+        sessionStorage.setItem("pending_enroll_course", courseId);
+      }
+      alert("কোর্সে ভর্তি হওয়ার জন্য অনুগ্রহ করে প্রথমে সাইন আপ বা লগইন করুন।");
+      router.push("/login?redirect=enroll");
+      return;
+    }
     setRegisterInitialCourseId(courseId);
     setIsRegisterModalOpen(true);
   };

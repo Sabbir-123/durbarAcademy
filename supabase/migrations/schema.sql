@@ -570,6 +570,33 @@ DROP POLICY IF EXISTS "Admins and teachers can modify courses" ON public.courses
 DROP POLICY IF EXISTS "Allow all modification to courses" ON public.courses;
 CREATE POLICY "Allow all modification to courses" ON public.courses FOR ALL USING (true) WITH CHECK (true);
 
+-- Create Payment Details Table
+CREATE TABLE IF NOT EXISTS public.payment_details (
+    id TEXT PRIMARY KEY,
+    method_type TEXT NOT NULL DEFAULT 'bkash', -- bkash, nagad, rocket, bank, other
+    title TEXT NOT NULL,
+    account_type TEXT DEFAULT 'personal', -- personal, agent, merchant, bank_account
+    mobile_number TEXT,
+    bank_name TEXT,
+    account_holder_name TEXT,
+    account_number TEXT,
+    branch_name TEXT,
+    district TEXT,
+    routing_number TEXT,
+    instructions TEXT,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT now(),
+    updated_at TIMESTAMP DEFAULT now()
+);
+
+ALTER TABLE public.payment_details ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Payment details are viewable by everyone" ON public.payment_details;
+CREATE POLICY "Payment details are viewable by everyone" ON public.payment_details FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Only admins can modify payment details" ON public.payment_details;
+CREATE POLICY "Only admins can modify payment details" ON public.payment_details FOR ALL USING (true) WITH CHECK (true);
+
 -- Promote ahmedsabbir2013@gmail.com to admin if user exists
 DO $$
 DECLARE

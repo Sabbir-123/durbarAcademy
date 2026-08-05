@@ -66,10 +66,19 @@ export default function CourseCatalog({ onOpenSyllabusModal, onOpenRegisterModal
                 className="course-card relative rounded-3xl bg-gradient-to-b from-[#0E2038] to-[#08192E] border border-white/10 p-6 flex flex-col justify-between hover:border-[#F59E0B]/40 transition-all duration-300 shadow-xl group hover:-translate-y-1"
               >
                 {/* Top Badge Overlay */}
-                <div className="flex items-center justify-between gap-2 mb-4">
-                  <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-[#163255] text-[#F59E0B] border border-[#F59E0B]/30 course-badge">
-                    {course.categoryLabel}
-                  </span>
+                <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-[#163255] text-[#F59E0B] border border-[#F59E0B]/30 course-badge">
+                      {course.categoryLabel}
+                    </span>
+                    <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      {course.courseMode === "online"
+                        ? "🌐 অনলাইন"
+                        : course.courseMode === "offline"
+                        ? "🏫 অফলাইন"
+                        : "🌐 অনলাইন ও 🏫 অফলাইন"}
+                    </span>
+                  </div>
                   {course.discountBadge && (
                     <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-red-500 text-white">
                       {course.discountBadge}

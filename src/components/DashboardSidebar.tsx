@@ -15,6 +15,7 @@ import {
   Coins,
   Trophy,
   Video,
+  CreditCard,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -55,6 +56,7 @@ export default function DashboardSidebar({ role, activeTab, onTabChange, userNam
       { id: "courses", label: "কোর্সসমূহ পরিচালনা", icon: BookOpen, href: "/admin/dashboard#courses" },
       { id: "stories", label: "সাকসেস স্টোরি", icon: Trophy, href: "/admin/dashboard#stories" },
       { id: "finance", label: "ফাইনান্স", icon: Coins, href: "/admin/dashboard#finance" },
+      { id: "payment", label: "পেমেন্ট ডিটেইলস", icon: CreditCard, href: "/admin/dashboard#payment" },
       { id: "audit", label: "অডিট ট্রেইল", icon: ShieldAlert, href: "/admin/dashboard#audit" },
     ],
   };

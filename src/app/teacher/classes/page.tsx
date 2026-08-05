@@ -406,6 +406,13 @@ export default function TeacherClassesPage() {
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#F59E0B]/20 text-[#FACC15] font-bold">
                       {selCourse.categoryLabel}
                     </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
+                      {selCourse.courseMode === "online"
+                        ? "🌐 অনলাইন"
+                        : selCourse.courseMode === "offline"
+                        ? "🏫 অফলাইন"
+                        : "🌐 অনলাইন ও 🏫 অফলাইন"}
+                    </span>
                   </>
                 ) : (
                   <span className="text-slate-400 font-normal">কোনো কোর্স নির্বাচন করা হয়নি</span>
@@ -429,7 +436,7 @@ export default function TeacherClassesPage() {
               <option value="">— পছন্দমতো কোর্স বেছে নিন ({courses.length} টি) —</option>
               {courses.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.title}
+                  {c.title} — ({c.courseMode === "online" ? "অনলাইন" : c.courseMode === "offline" ? "অফলাইন" : "অনলাইন ও অফলাইন"})
                 </option>
               ))}
             </select>

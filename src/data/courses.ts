@@ -30,6 +30,7 @@ export interface Course {
   videoUrl?: string; // Optional preview video (YouTube, Vimeo, MP4)
   description?: string; // Detailed course overview
   detailLayout?: "standard" | "video_hero" | "modern_split"; // Customizable layout format
+  courseMode?: "online" | "offline" | "both"; // Course delivery mode
   sections?: CourseSection[];
   features: string[];
   instructors: string[];
@@ -47,6 +48,7 @@ export const INITIAL_COURSES: Course[] = [
     title: "BAFA Preliminary Course",
     tagline: "বাংলাদেশ বিমান বাহিনী অফিসার ক্যাডেট লিখিত ও প্রিলিমিনারি মেধা পরীক্ষা প্রিপারেশন",
     discountBadge: "৪০% ছাড়",
+    courseMode: "both",
     price: 8500,
     originalPrice: 14000,
     seatsRemaining: 15,

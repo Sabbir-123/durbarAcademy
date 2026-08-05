@@ -8,6 +8,10 @@ export interface AppUser {
   password?: string;
   temp_password?: string;
   permissions?: any;
+  phone?: string;
+  parent_phone?: string;
+  whatsapp?: string;
+  college?: string;
 }
 
 const STORAGE_KEY = "durbar_academy_users_v1";
