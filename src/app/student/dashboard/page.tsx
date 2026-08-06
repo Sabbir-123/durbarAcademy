@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import DashboardHeader from "@/components/DashboardHeader";
 import { createClient } from "@/utils/supabase/client";
-import { BookOpen, Calendar, HelpCircle, CheckCircle2, User, Trophy, CreditCard } from "lucide-react";
+import { BookOpen, Calendar, HelpCircle, CheckCircle2, User, Trophy, CreditCard, ShieldAlert, UserCheck } from "lucide-react";
 import Link from "next/link";
 
 export default function StudentDashboard() {
@@ -19,8 +19,35 @@ export default function StudentDashboard() {
   const [ticketSubject, setTicketSubject] = useState("");
   const [ticketDesc, setTicketDesc] = useState("");
   const [ticketSuccess, setTicketSuccess] = useState(false);
-  
+
+  // Active Navigation Tab
+  const [activeTab, setActiveTab] = useState("dashboard");
+
+  // Profile Form States
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [schoolName, setSchoolName] = useState("");
+  const [address, setAddress] = useState("");
+  const [parentName, setParentName] = useState("");
+  const [parentPhone, setParentPhone] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileSuccess, setProfileSuccess] = useState(false);
+  const [profileError, setProfileError] = useState("");
+
   const supabase = createClient();
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace("#", "");
+      if (hash) {
+        setActiveTab(hash);
+      }
+    };
+    handleHashChange();
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
 
   useEffect(() => {
     async function loadData() {
@@ -33,7 +60,17 @@ export default function StudentDashboard() {
         .select("*")
         .eq("id", user.id)
         .single();
-      setProfile(prof);
+
+      if (prof) {
+        setProfile(prof);
+        setFullName(prof.full_name || "");
+        setPhone(prof.phone || "");
+        setSchoolName(prof.school_name || prof.college || "");
+        setAddress(prof.address || prof.city || "");
+        setParentName(prof.parent_name || "");
+        setParentPhone(prof.parent_phone || "");
+        setAvatarUrl(prof.avatar_url || "");
+      }
 
       // Check restrictions
       const { data: restriction } = await supabase
@@ -111,10 +148,67 @@ export default function StudentDashboard() {
     setTicketDesc("");
   };
 
+  const handleProfileSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingProfile(true);
+    setProfileSuccess(false);
+    setProfileError("");
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("ব্যবহারকারী সনাক্ত করা যায়নি।");
+
+      const updateData = {
+        id: user.id,
+        email: user.email,
+        full_name: fullName,
+        phone: phone,
+        college: schoolName,
+        school_name: schoolName,
+        address: address,
+        parent_name: parentName,
+        parent_phone: parentPhone,
+        avatar_url: avatarUrl,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error: profErr } = await supabase
+        .from("profiles")
+        .upsert(updateData);
+
+      if (profErr) throw profErr;
+
+      // Also upsert to student_profiles
+      await supabase.from("student_profiles").upsert({
+        student_id: user.id,
+        school: schoolName,
+        guardian_name: parentName,
+        parent_phone: parentPhone,
+        updated_at: new Date().toISOString(),
+      });
+
+      setProfile((prev: any) => ({
+        ...prev,
+        ...updateData,
+      }));
+
+      setProfileSuccess(true);
+      setTimeout(() => setProfileSuccess(false), 5000);
+    } catch (err: any) {
+      setProfileError(err.message || "প্রোফাইল তথ্য সংরক্ষণে সমস্যা হয়েছে।");
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#07182E] text-white flex">
       {/* Sidebar Navigation */}
-      <DashboardSidebar role="student" activeTab="dashboard" />
+      <DashboardSidebar
+        role="student"
+        activeTab={activeTab}
+        onTabChange={(tab) => setActiveTab(tab)}
+      />
 
       {/* Main Content Area */}
       <main className="flex-1 overflow-y-auto p-6 sm:p-8 lg:p-10 space-y-8">
@@ -330,6 +424,166 @@ export default function StudentDashboard() {
           </section>
 
         </div>
+
+        {/* Student Profile Settings Section */}
+        <section id="profile" className="bg-[#0D2038] border border-white/10 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+            <div>
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <UserCheck className="w-5 h-5 text-[#F59E0B]" />
+                <span>আমার শিক্ষার্থী প্রোফাইল ও তথ্যাবলী</span>
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                আপনার ছবি, শিক্ষাপ্রতিষ্ঠান, ঠিকানা ও অভিভাবকের যোগাযোগের তথ্য হালনাগাদ রাখুন।
+              </p>
+            </div>
+            <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-[#F59E0B]/10 text-[#FACC15] border border-[#F59E0B]/30 shrink-0">
+              প্রোফাইল সেটিংস
+            </span>
+          </div>
+
+          {profileSuccess && (
+            <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 p-4 rounded-2xl text-xs font-bold flex items-center gap-2 animate-fade-in">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>আপনার প্রোফাইল তথ্য সফলভাবে ডাটাবেজে সংরক্ষণ করা হয়েছে!</span>
+            </div>
+          )}
+
+          {profileError && (
+            <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-2xl text-xs font-bold animate-fade-in">
+              {profileError}
+            </div>
+          )}
+
+          <form onSubmit={handleProfileSave} className="space-y-6 text-xs">
+            {/* Avatar / Profile Picture */}
+            <div className="flex flex-col sm:flex-row items-center gap-5 p-4 rounded-2xl bg-[#07182E] border border-white/5">
+              <div className="relative w-20 h-20 rounded-full overflow-hidden bg-[#163255] border-2 border-[#F59E0B] flex items-center justify-center shrink-0 shadow-md">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt={fullName} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-2xl font-black text-amber-400">
+                    {fullName?.charAt(0) || profile?.full_name?.charAt(0) || "S"}
+                  </span>
+                )}
+              </div>
+              <div className="space-y-2 w-full">
+                <label className="font-bold text-slate-300 block">প্রোফাইল ছবি / অবতার লিঙ্ক (URL):</label>
+                <input
+                  type="url"
+                  placeholder="https://example.com/photo.jpg"
+                  value={avatarUrl}
+                  onChange={(e) => setAvatarUrl(e.target.value)}
+                  className="w-full bg-[#0D2038] border border-white/10 rounded-xl p-3 text-xs text-white placeholder-slate-500 outline-none focus:border-[#F59E0B]"
+                />
+                <span className="text-[10px] text-slate-400 block">
+                  পরামর্শ: আপনার ছবির লিঙ্ক বা সোশ্যাল মিডিয়া ছবি লিঙ্ক প্রদান করুন।
+                </span>
+              </div>
+            </div>
+
+            {/* Grid 1: Name & Student Phone */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">শিক্ষার্থীর পূর্ণ নাম:*</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="যেমন: সাব্বির হোসেন"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">শিক্ষার্থীর মোবাইল নম্বর:*</label>
+                <input
+                  type="tel"
+                  required
+                  placeholder="০১৭xxxxxxxx"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
+                />
+              </div>
+            </div>
+
+            {/* Grid 2: Institution & Address */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">স্কুল / কলেজ / প্রতিষ্ঠানের নাম:</label>
+                <input
+                  type="text"
+                  placeholder="যেমন: নটর ডেম কলেজ, ঢাকা"
+                  value={schoolName}
+                  onChange={(e) => setSchoolName(e.target.value)}
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">বাসস্থান / বর্তমান ঠিকানা:</label>
+                <input
+                  type="text"
+                  placeholder="যেমন: মিরপুর ১০, ঢাকা"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
+                />
+              </div>
+            </div>
+
+            {/* Grid 3: Parent's Name & Parent's Phone */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">অভিভাবকের পূর্ণ নাম:*</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="যেমন: মোঃ রফিকুল ইসলাম"
+                  value={parentName}
+                  onChange={(e) => setParentName(e.target.value)}
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">অভিভাবকের মোবাইল নম্বর:*</label>
+                <input
+                  type="tel"
+                  required
+                  placeholder="০১৮xxxxxxxx"
+                  value={parentPhone}
+                  onChange={(e) => setParentPhone(e.target.value)}
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
+                />
+              </div>
+            </div>
+
+            {/* Parent Phone Manual Verification Alert Box */}
+            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-start gap-3 shadow-inner">
+              <ShieldAlert className="w-5 h-5 text-[#F59E0B] shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <strong className="font-extrabold block text-[#FACC15]">অভিভাবক মোবাইল নম্বর ম্যানুয়াল সচ্ছতা যাচাই নীতিমালা:</strong>
+                <p className="text-[11px] leading-relaxed text-amber-200/90">
+                  অভিভাবকের প্রদানকৃত মোবাইল নম্বরটি যেকোনো সময় আমাদের একাডেমির সিকিউরিটি টিম ও প্রশাসনিক কর্তৃপক্ষ কর্তৃক ফোন কলের মাধ্যমে ম্যানুয়ালি যাচাই (Manual Verification) করা হবে।
+                </p>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <div className="flex justify-end pt-2">
+              <button
+                type="submit"
+                disabled={isSavingProfile}
+                className="px-8 py-3.5 bg-gradient-to-r from-[#F59E0B] via-[#FACC15] to-[#F59E0B] text-black font-bold text-xs rounded-xl shadow-lg gold-glow hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+              >
+                {isSavingProfile ? "সংরক্ষণ করা হচ্ছে..." : "প্রোফাইল তথ্য সেভ করুন"}
+              </button>
+            </div>
+          </form>
+        </section>
 
         {/* Transaction History log */}
         <section className="bg-[#0D2038] border border-white/10 rounded-3xl p-6 space-y-4">

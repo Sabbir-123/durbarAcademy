@@ -21,6 +21,10 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     avatar_url TEXT,
     phone TEXT,
     college TEXT,
+    school_name TEXT,
+    address TEXT,
+    parent_name TEXT,
+    parent_phone TEXT,
     city TEXT,
     created_at TIMESTAMP DEFAULT now(),
     updated_at TIMESTAMP DEFAULT now()
