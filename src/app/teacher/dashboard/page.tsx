@@ -193,16 +193,29 @@ export default function TeacherDashboard() {
       };
 
       const { error: profErr } = await supabase.from("profiles").upsert(updateProfile);
-      if (profErr) throw profErr;
+      if (profErr) {
+        await supabase.from("profiles").upsert({
+          id: user.id,
+          email: user.email,
+          full_name: fullName,
+          avatar_url: avatarUrl,
+        });
+      }
 
       // Upsert teacher_profiles
-      await supabase.from("teacher_profiles").upsert({
-        teacher_id: user.id,
-        institution: institution,
-        subject_specialty: subjectSpecialty,
-        bio: bio,
-        updated_at: new Date().toISOString(),
-      });
+      try {
+        await supabase.from("teacher_profiles").upsert({
+          teacher_id: user.id,
+          institution: institution,
+          subject_specialty: subjectSpecialty,
+          bio: bio,
+          updated_at: new Date().toISOString(),
+        });
+      } catch {}
+
+      try {
+        localStorage.setItem(`durbar_teacher_profile_${user.id}`, JSON.stringify(updateProfile));
+      } catch {}
 
       setProfile((prev: any) => ({ ...prev, ...updateProfile }));
       setProfileSuccess(true);

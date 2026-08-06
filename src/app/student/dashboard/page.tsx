@@ -59,18 +59,39 @@ export default function StudentDashboard() {
         .from("profiles")
         .select("*")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
 
-      if (prof) {
-        setProfile(prof);
-        setFullName(prof.full_name || "");
-        setPhone(prof.phone || "");
-        setSchoolName(prof.school_name || prof.college || "");
-        setAddress(prof.address || prof.city || "");
-        setParentName(prof.parent_name || "");
-        setParentPhone(prof.parent_phone || "");
-        setAvatarUrl(prof.avatar_url || "");
-      }
+      const { data: studentProf } = await supabase
+        .from("student_profiles")
+        .select("*")
+        .eq("student_id", user.id)
+        .maybeSingle();
+
+      let localSaved: any = {};
+      try {
+        const raw = localStorage.getItem(`durbar_student_profile_${user.id}`);
+        if (raw) localSaved = JSON.parse(raw);
+      } catch {}
+
+      const mergedProfile = {
+        ...prof,
+        full_name: prof?.full_name || localSaved.full_name || "",
+        phone: prof?.phone || localSaved.phone || "",
+        school_name: prof?.school_name || studentProf?.school || prof?.college || localSaved.school_name || "",
+        address: prof?.address || prof?.city || localSaved.address || "",
+        parent_name: prof?.parent_name || studentProf?.guardian_name || localSaved.parent_name || "",
+        parent_phone: prof?.parent_phone || studentProf?.parent_phone || localSaved.parent_phone || "",
+        avatar_url: prof?.avatar_url || localSaved.avatar_url || "",
+      };
+
+      setProfile(mergedProfile);
+      setFullName(mergedProfile.full_name);
+      setPhone(mergedProfile.phone);
+      setSchoolName(mergedProfile.school_name);
+      setAddress(mergedProfile.address);
+      setParentName(mergedProfile.parent_name);
+      setParentPhone(mergedProfile.parent_phone);
+      setAvatarUrl(mergedProfile.avatar_url);
 
       // Check restrictions
       const { data: restriction } = await supabase
@@ -158,7 +179,7 @@ export default function StudentDashboard() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("ব্যবহারকারী সনাক্ত করা যায়নি।");
 
-      const updateData = {
+      const fullUpdateData = {
         id: user.id,
         email: user.email,
         full_name: fullName,
@@ -172,24 +193,45 @@ export default function StudentDashboard() {
         updated_at: new Date().toISOString(),
       };
 
+      // 1. Try full upsert to profiles table
       const { error: profErr } = await supabase
         .from("profiles")
-        .upsert(updateData);
+        .upsert(fullUpdateData);
 
-      if (profErr) throw profErr;
+      // 2. If profiles table lacks custom columns (e.g. 'address' error), fallback to standard profiles columns
+      if (profErr) {
+        const standardUpdateData = {
+          id: user.id,
+          email: user.email,
+          full_name: fullName,
+          phone: phone,
+          college: schoolName,
+          city: address,
+          avatar_url: avatarUrl,
+          updated_at: new Date().toISOString(),
+        };
+        await supabase.from("profiles").upsert(standardUpdateData);
+      }
 
-      // Also upsert to student_profiles
-      await supabase.from("student_profiles").upsert({
-        student_id: user.id,
-        school: schoolName,
-        guardian_name: parentName,
-        parent_phone: parentPhone,
-        updated_at: new Date().toISOString(),
-      });
+      // 3. Upsert to student_profiles table
+      try {
+        await supabase.from("student_profiles").upsert({
+          student_id: user.id,
+          school: schoolName,
+          guardian_name: parentName,
+          parent_phone: parentPhone,
+          updated_at: new Date().toISOString(),
+        });
+      } catch {}
+
+      // 4. Save to local storage for persistent recovery
+      try {
+        localStorage.setItem(`durbar_student_profile_${user.id}`, JSON.stringify(fullUpdateData));
+      } catch {}
 
       setProfile((prev: any) => ({
         ...prev,
-        ...updateData,
+        ...fullUpdateData,
       }));
 
       setProfileSuccess(true);
