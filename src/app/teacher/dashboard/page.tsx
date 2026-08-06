@@ -20,6 +20,9 @@ import {
   Sparkles,
   Layers,
   ChevronRight,
+  UserCheck,
+  Upload,
+  CheckCircle2,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -28,7 +31,31 @@ export default function TeacherDashboard() {
   const [coursesCount, setCoursesCount] = useState(0);
   const [successStories, setSuccessStories] = useState<StudentSuccess[]>([]);
 
+  // Navigation & Profile Form States
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [institution, setInstitution] = useState("");
+  const [subjectSpecialty, setSubjectSpecialty] = useState("");
+  const [bio, setBio] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileSuccess, setProfileSuccess] = useState(false);
+  const [profileError, setProfileError] = useState("");
+
   const supabase = createClient();
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace("#", "");
+      if (hash) {
+        setActiveTab(hash);
+      }
+    };
+    handleHashChange();
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
 
   useEffect(() => {
     setSuccessStories(getStoredSuccessStories());
@@ -116,8 +143,23 @@ export default function TeacherDashboard() {
           .select("*")
           .eq("id", user.id)
           .single();
-        setProfile(prof);
-        calculateAssignedCourses(prof?.email, user?.email, prof?.full_name);
+
+        const { data: teacherProf } = await supabase
+          .from("teacher_profiles")
+          .select("*")
+          .eq("teacher_id", user.id)
+          .maybeSingle();
+
+        if (prof) {
+          setProfile(prof);
+          setFullName(prof.full_name || "");
+          setPhone(prof.phone || "");
+          setAvatarUrl(prof.avatar_url || "");
+          setInstitution(teacherProf?.institution || prof.college || "");
+          setSubjectSpecialty(teacherProf?.subject_specialty || "");
+          setBio(teacherProf?.bio || "");
+          calculateAssignedCourses(prof?.email, user?.email, prof?.full_name);
+        }
       }
     }
     loadData();
@@ -128,10 +170,76 @@ export default function TeacherDashboard() {
     };
   }, []);
 
+  const handleProfileSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingProfile(true);
+    setProfileSuccess(false);
+    setProfileError("");
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("ইনস্ট্রাক্টর সনাক্ত করা যায়নি।");
+
+      const updateProfile = {
+        id: user.id,
+        email: user.email,
+        full_name: fullName,
+        phone: phone,
+        college: institution,
+        avatar_url: avatarUrl,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error: profErr } = await supabase.from("profiles").upsert(updateProfile);
+      if (profErr) throw profErr;
+
+      // Upsert teacher_profiles
+      await supabase.from("teacher_profiles").upsert({
+        teacher_id: user.id,
+        institution: institution,
+        subject_specialty: subjectSpecialty,
+        bio: bio,
+        updated_at: new Date().toISOString(),
+      });
+
+      setProfile((prev: any) => ({ ...prev, ...updateProfile }));
+      setProfileSuccess(true);
+      setTimeout(() => setProfileSuccess(false), 5000);
+    } catch (err: any) {
+      setProfileError(err.message || "ইনস্ট্রাক্টর প্রোফাইল সেভ করতে সমস্যা হয়েছে।");
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const handleImageFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("ছবি ফাইলের সাইজ সর্বোচ্চ ৫ মেগাবাইট (5MB) হতে পারবে।");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target?.result) {
+        setAvatarUrl(event.target.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
     <div className="min-h-screen bg-[#07182E] text-white flex">
       {/* Sidebar Navigation */}
-      <DashboardSidebar role="teacher" activeTab="dashboard" />
+      <DashboardSidebar
+        role="teacher"
+        activeTab={activeTab}
+        onTabChange={(tab) => setActiveTab(tab)}
+      />
 
       {/* Main Content Area */}
       <main className="flex-1 overflow-y-auto p-6 sm:p-8 lg:p-10 space-y-8">
@@ -276,6 +384,152 @@ export default function TeacherDashboard() {
             <ChevronRight className="w-4 h-4" />
           </Link>
         </div>
+
+        {/* Teacher / Instructor Profile Settings Section */}
+        <section id="profile" className="bg-[#0D2038] border border-white/10 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+            <div>
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <UserCheck className="w-5 h-5 text-[#F59E0B]" />
+                <span>আমার ইনস্ট্রাক্টর প্রোফাইল ও তথ্যাবলী</span>
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                আপনার ইনস্ট্রাক্টর ছবি, শিক্ষাপ্রতিষ্ঠান, বিশেষজ্ঞতার বিষয় ও বায়ো ইনফরমেশন আপডেট করুন।
+              </p>
+            </div>
+            <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-[#F59E0B]/10 text-[#FACC15] border border-[#F59E0B]/30 shrink-0">
+              ইনস্ট্রাক্টর প্রোফাইল সেটিংস
+            </span>
+          </div>
+
+          {profileSuccess && (
+            <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 p-4 rounded-2xl text-xs font-bold flex items-center gap-2 animate-fade-in">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>আপনার ইনস্ট্রাক্টর প্রোফাইল তথ্য সফলভাবে ডাটাবেজে আপডেট করা হয়েছে!</span>
+            </div>
+          )}
+
+          {profileError && (
+            <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-2xl text-xs font-bold animate-fade-in">
+              {profileError}
+            </div>
+          )}
+
+          <form onSubmit={handleProfileSave} className="space-y-6 text-xs">
+            {/* Avatar / Profile Picture Upload */}
+            <div className="flex flex-col sm:flex-row items-center gap-5 p-4 rounded-2xl bg-[#07182E] border border-white/5">
+              <div className="relative w-20 h-20 rounded-full overflow-hidden bg-[#163255] border-2 border-[#F59E0B] flex items-center justify-center shrink-0 shadow-md">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt={fullName} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-2xl font-black text-amber-400">
+                    {fullName?.charAt(0) || profile?.full_name?.charAt(0) || "T"}
+                  </span>
+                )}
+              </div>
+              <div className="space-y-3 w-full">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <label className="font-bold text-slate-300 block">ইনস্ট্রাক্টর ছবি আপলোড / লিঙ্ক:</label>
+                  <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#F59E0B]/20 text-[#F59E0B] border border-[#F59E0B]/40 hover:bg-[#F59E0B]/30 transition-all font-bold text-xs shrink-0">
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>নতুন ছবি ফাইল আপলোড করুন</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageFileSelect}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+                <input
+                  type="url"
+                  placeholder="অথবা সরাসরি ছবি URL (Image Link) প্রদান করুন..."
+                  value={avatarUrl}
+                  onChange={(e) => setAvatarUrl(e.target.value)}
+                  className="w-full bg-[#0D2038] border border-white/10 rounded-xl p-3 text-xs text-white placeholder-slate-500 outline-none focus:border-[#F59E0B]"
+                />
+                <span className="text-[10px] text-slate-400 block">
+                  ডিভাইস থেকে সরাসরি ছবি আপলোড করতে "নতুন ছবি ফাইল আপলোড করুন" বাটনে ক্লিক করুন।
+                </span>
+              </div>
+            </div>
+
+            {/* Grid 1: Teacher Name & Teacher Phone */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">ইনস্ট্রাক্টরের পূর্ণ নাম:*</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="যেমন: ইঞ্জি. তানভীর আহমেদ"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">ইনস্ট্রাক্টরের মোবাইল নম্বর:*</label>
+                <input
+                  type="tel"
+                  required
+                  placeholder="০১৭xxxxxxxx"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
+                />
+              </div>
+            </div>
+
+            {/* Grid 2: Institution & Subject Specialty */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">শিক্ষা প্রতিষ্ঠান / বিশ্ববিদ্যালয়:</label>
+                <input
+                  type="text"
+                  placeholder="যেমন: বাংলাদেশ প্রকৌশল বিশ্ববিদ্যালয় (BUET)"
+                  value={institution}
+                  onChange={(e) => setInstitution(e.target.value)}
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">বিশেষজ্ঞতার বিষয় (Subject Specialty):</label>
+                <input
+                  type="text"
+                  placeholder="যেমন: পদার্থবিজ্ঞান ও আইকিউ স্পেশালিস্ট"
+                  value={subjectSpecialty}
+                  onChange={(e) => setSubjectSpecialty(e.target.value)}
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
+                />
+              </div>
+            </div>
+
+            {/* Bio Field */}
+            <div>
+              <label className="font-bold text-slate-300 block mb-1">সংক্ষিপ্ত জীবনবৃত্তান্ত / বায়ো (Bio):</label>
+              <textarea
+                rows={3}
+                placeholder="আপনার শিক্ষকতা অভিজ্ঞতা, সাফল্য ও ক্যাডেট গাইড করার সংক্ষেপ বিবরণ লিখুন..."
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#F59E0B]"
+              />
+            </div>
+
+            {/* Submit Button */}
+            <div className="flex justify-end pt-2">
+              <button
+                type="submit"
+                disabled={isSavingProfile}
+                className="px-8 py-3.5 bg-gradient-to-r from-[#F59E0B] via-[#FACC15] to-[#F59E0B] text-black font-bold text-xs rounded-xl shadow-lg gold-glow hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+              >
+                {isSavingProfile ? "সংরক্ষণ করা হচ্ছে..." : "ইনস্ট্রাক্টর প্রোফাইল সেভ করুন"}
+              </button>
+            </div>
+          </form>
+        </section>
       </main>
     </div>
   );

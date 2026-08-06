@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import DashboardHeader from "@/components/DashboardHeader";
 import { createClient } from "@/utils/supabase/client";
-import { BookOpen, Calendar, HelpCircle, CheckCircle2, User, Trophy, CreditCard, ShieldAlert, UserCheck } from "lucide-react";
+import { BookOpen, Calendar, HelpCircle, CheckCircle2, User, Trophy, CreditCard, ShieldAlert, UserCheck, Upload, Camera } from "lucide-react";
 import Link from "next/link";
 
 export default function StudentDashboard() {
@@ -199,6 +199,24 @@ export default function StudentDashboard() {
     } finally {
       setIsSavingProfile(false);
     }
+  };
+
+  const handleImageFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("ছবি ফাইলের সাইজ সর্বোচ্চ ৫ মেগাবাইট (5MB) হতে পারবে।");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target?.result) {
+        setAvatarUrl(event.target.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -456,7 +474,7 @@ export default function StudentDashboard() {
           )}
 
           <form onSubmit={handleProfileSave} className="space-y-6 text-xs">
-            {/* Avatar / Profile Picture */}
+            {/* Avatar / Profile Picture Upload */}
             <div className="flex flex-col sm:flex-row items-center gap-5 p-4 rounded-2xl bg-[#07182E] border border-white/5">
               <div className="relative w-20 h-20 rounded-full overflow-hidden bg-[#163255] border-2 border-[#F59E0B] flex items-center justify-center shrink-0 shadow-md">
                 {avatarUrl ? (
@@ -467,17 +485,29 @@ export default function StudentDashboard() {
                   </span>
                 )}
               </div>
-              <div className="space-y-2 w-full">
-                <label className="font-bold text-slate-300 block">প্রোফাইল ছবি / অবতার লিঙ্ক (URL):</label>
+              <div className="space-y-3 w-full">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <label className="font-bold text-slate-300 block">প্রোফাইল ছবি আপলোড / লিঙ্ক:</label>
+                  <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#F59E0B]/20 text-[#F59E0B] border border-[#F59E0B]/40 hover:bg-[#F59E0B]/30 transition-all font-bold text-xs shrink-0">
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>নতুন ছবি আপলোড করুন</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageFileSelect}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
                 <input
                   type="url"
-                  placeholder="https://example.com/photo.jpg"
+                  placeholder="অথবা ইমপ্রেশন/ছবি URL সরাসরি প্রদান করুন..."
                   value={avatarUrl}
                   onChange={(e) => setAvatarUrl(e.target.value)}
                   className="w-full bg-[#0D2038] border border-white/10 rounded-xl p-3 text-xs text-white placeholder-slate-500 outline-none focus:border-[#F59E0B]"
                 />
                 <span className="text-[10px] text-slate-400 block">
-                  পরামর্শ: আপনার ছবির লিঙ্ক বা সোশ্যাল মিডিয়া ছবি লিঙ্ক প্রদান করুন।
+                  ডিভাইস থেকে সরাসরি ছবি বাছাই করতে "নতুন ছবি আপলোড করুন" বাটনে ক্লিক করুন।
                 </span>
               </div>
             </div>
