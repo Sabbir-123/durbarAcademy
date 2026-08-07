@@ -342,13 +342,13 @@ export default function StudentCoursesPage() {
                         <span>তথ্য সংশোধন ও পুনর্প্রেরণ করুন</span>
                       </button>
                     ) : (
-                      <button
-                        onClick={() => setReEnrollModalCourseId(record.course_id)}
+                      <Link
+                        href={`/checkout?courseId=${record.course_id}`}
                         className="px-5 py-2.5 text-xs font-extrabold text-white bg-red-600 hover:bg-red-500 rounded-xl shadow-lg transition-all flex items-center gap-2"
                       >
                         <RefreshCw className="w-3.5 h-3.5" />
                         <span>পুনরায় ভর্তি আবেদন করুন</span>
-                      </button>
+                      </Link>
                     )}
                   </div>
                 </div>

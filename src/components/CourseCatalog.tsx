@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { COURSES, Course } from "@/data/courses";
 import { Sparkles, Check, Clock, UserCheck } from "lucide-react";
 
@@ -141,12 +142,12 @@ export default function CourseCatalog({ onOpenSyllabusModal, onOpenRegisterModal
                     >
                       সিলেবাস
                     </button>
-                    <button
-                      onClick={() => onOpenRegisterModal(course.id)}
-                      className="course-enroll-btn py-2.5 px-3 rounded-xl bg-[#F59E0B] hover:bg-[#FACC15] text-black text-xs font-bold transition-all shadow-md"
+                    <Link
+                      href={`/checkout?courseId=${course.id}`}
+                      className="course-enroll-btn py-2.5 px-3 rounded-xl bg-[#F59E0B] hover:bg-[#FACC15] text-black text-xs font-bold transition-all shadow-md text-center flex items-center justify-center"
                     >
                       ভর্তি হোন
-                    </button>
+                    </Link>
                   </div>
                 </div>
               </div>

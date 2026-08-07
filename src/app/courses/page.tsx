@@ -375,14 +375,12 @@ export default function CoursesPage() {
                           বিস্তারিত দেখুন
                         </Link>
 
-                        <motion.button
-                          whileHover={{ scale: 1.04 }}
-                          whileTap={{ scale: 0.96 }}
-                          onClick={() => handleOpenRegisterModal(course.id)}
-                          className="course-enroll-btn w-full py-3 px-3 rounded-2xl bg-gradient-to-r from-[#F59E0B] to-[#D97706] text-black text-xs font-bold transition-all shadow-md hover:brightness-110"
+                        <Link
+                          href={`/checkout?courseId=${course.id}`}
+                          className="course-enroll-btn w-full py-3 px-3 rounded-2xl bg-gradient-to-r from-[#F59E0B] to-[#D97706] text-black text-xs font-bold transition-all shadow-md hover:brightness-110 text-center flex items-center justify-center"
                         >
                           ভর্তি হোন
-                        </motion.button>
+                        </Link>
                       </div>
                     </div>
                   </motion.div>

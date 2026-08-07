@@ -476,14 +476,12 @@ export default function CourseDetailView({ courseId }: CourseDetailViewProps) {
 
                 {/* Action CTA Buttons */}
                 <div className="space-y-3 pt-2">
-                  <motion.button
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
-                    onClick={() => setIsRegisterModalOpen(true)}
-                    className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#F59E0B] via-[#FACC15] to-[#F59E0B] text-black text-sm font-extrabold shadow-xl gold-glow hover:brightness-110 transition-all"
+                  <Link
+                    href={`/checkout?courseId=${course.id}`}
+                    className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#F59E0B] via-[#FACC15] to-[#F59E0B] text-black text-sm font-extrabold shadow-xl gold-glow hover:brightness-110 transition-all text-center flex items-center justify-center"
                   >
                     এখনই ভর্তি হোন
-                  </motion.button>
+                  </Link>
                 </div>
               </motion.div>
             </div>

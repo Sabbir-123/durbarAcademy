@@ -404,14 +404,12 @@ export default function CoursesSliderSection({
                         বিস্তারিত দেখুন
                       </Link>
 
-                      <motion.button
-                        whileHover={{ scale: 1.04 }}
-                        whileTap={{ scale: 0.96 }}
-                        onClick={() => onOpenRegisterModal(course.id)}
-                        className="course-enroll-btn w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-[#F59E0B] to-[#D97706] text-black text-xs font-bold transition-all shadow-md hover:brightness-110"
+                      <Link
+                        href={`/checkout?courseId=${course.id}`}
+                        className="course-enroll-btn w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-[#F59E0B] to-[#D97706] text-black text-xs font-bold transition-all shadow-md hover:brightness-110 text-center flex items-center justify-center"
                       >
-                        এনরোল করুন
-                      </motion.button>
+                        ভর্তি হোন
+                      </Link>
                     </div>
                   </div>
                 </motion.div>
