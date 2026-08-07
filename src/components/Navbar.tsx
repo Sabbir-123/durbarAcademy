@@ -115,7 +115,7 @@ export default function Navbar({ onOpenRegisterModal }: NavbarProps) {
   ];
 
   return (
-    <header className="sticky top-0 sm:top-3 z-50 transition-all duration-300 px-2 sm:px-4 lg:px-6 max-w-[1440px] w-full mx-auto">
+    <header className="sticky top-0 sm:top-3 z-50 transition-all duration-300 px-5 sm:px-8 lg:px-12 max-w-[1360px] w-full mx-auto">
       {/* Floating White Navigation Container */}
       <div
         className={`w-full bg-white text-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl transition-all duration-300 px-5 sm:px-8 lg:px-10 py-2.5 border border-slate-200/80 flex items-center justify-between gap-6 sm:gap-8 lg:gap-12 ${
