@@ -9,7 +9,8 @@ import { createClient } from "@/utils/supabase/client";
 import {
   getStoredEnrollments,
   subscribeEnrollmentStore,
-  resubmitEnrollmentRequestStore,
+  submitEnrollmentRequest,
+  updateEnrollmentStatusStore,
   EnrollmentRecord,
   fetchEnrollmentsFromDatabase,
 } from "@/utils/enrollmentStore";
@@ -83,10 +84,9 @@ export default function StudentCoursesPage() {
         return false;
       });
 
-      // If user specific matching returned items, use them; otherwise fallback to freshLocal
-      setEnrollments(studentRecs.length > 0 ? studentRecs : freshLocal);
+      setEnrollments(studentRecs);
     } else {
-      setEnrollments(freshLocal);
+      setEnrollments([]);
     }
 
     setIsLoading(false);
@@ -126,11 +126,23 @@ export default function StudentCoursesPage() {
       return;
     }
 
-    await resubmitEnrollmentRequestStore(modTargetRecord.id, {
-      sender_number: modSenderNumber,
-      trx_id: modTrxId,
-      payment_screenshot: modPaymentScreenshot,
-    });
+    // PATCH the enrollment with updated payment info + reset status to pending for re-review
+    try {
+      await fetch("/api/enrollments", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: modTargetRecord.id,
+          status: "pending",
+          admin_note: "",
+          sender_number: modSenderNumber,
+          trx_id: modTrxId,
+          payment_screenshot: modPaymentScreenshot,
+        }),
+      });
+    } catch (err) {
+      console.warn("Resubmit modification PATCH error:", err);
+    }
 
     setModSuccess(true);
     setTimeout(() => {
@@ -329,18 +341,13 @@ export default function StudentCoursesPage() {
                         <span>অনুমোদনের অপেক্ষায়</span>
                       </button>
                     ) : isModNeeded ? (
-                      <button
-                        onClick={() => {
-                          setModTargetRecord(record);
-                          setModSenderNumber(record.sender_number || "");
-                          setModTrxId(record.trx_id || "");
-                          setModPaymentScreenshot(record.payment_screenshot || "");
-                        }}
-                        className="px-5 py-2.5 text-xs font-extrabold text-slate-950 bg-sky-400 hover:bg-sky-300 rounded-xl shadow-lg transition-all flex items-center gap-2 animate-bounce"
+                      <Link
+                        href={`/checkout?courseId=${record.course_id}&editEnrollmentId=${record.id}`}
+                        className="px-5 py-2.5 text-xs font-extrabold text-slate-950 bg-gradient-to-r from-sky-400 to-cyan-300 hover:from-sky-300 hover:to-cyan-200 rounded-xl shadow-lg transition-all flex items-center gap-2 animate-bounce-subtle"
                       >
                         <Edit className="w-4 h-4" />
-                        <span>তথ্য সংশোধন ও পুনর্প্রেরণ করুন</span>
-                      </button>
+                        <span>তথ্য সংশোধন করুন →</span>
+                      </Link>
                     ) : (
                       <Link
                         href={`/checkout?courseId=${record.course_id}`}

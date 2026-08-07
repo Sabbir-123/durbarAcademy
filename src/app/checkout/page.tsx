@@ -71,6 +71,10 @@ function CheckoutContent() {
 
   const supabase = createClient();
 
+  const editEnrollmentId = searchParams.get("editEnrollmentId") || "";
+  const [adminNote, setAdminNote] = useState("");
+  const [isEditMode, setIsEditMode] = useState(false);
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -78,6 +82,7 @@ function CheckoutContent() {
   useEffect(() => {
     async function loadInitialData() {
       setIsLoading(true);
+
       // Check current user profile to prefill name, email & phone
       const {
         data: { user },
@@ -91,19 +96,39 @@ function CheckoutContent() {
           .eq("id", user.id)
           .maybeSingle();
 
-        let localSaved: any = {};
-        try {
-          const raw = localStorage.getItem(`durbar_student_profile_${user.id}`);
-          if (raw) localSaved = JSON.parse(raw);
-        } catch {}
-
-        setName(prof?.full_name || localSaved.full_name || user.email?.split("@")[0] || "");
-        setEmail(user.email || prof?.email || localSaved.email || "");
-        setPhone(prof?.phone || localSaved.phone || "");
-        setCollege(prof?.college || localSaved.college || "");
+        setName(prof?.full_name || user.email?.split("@")[0] || "");
+        setEmail(user.email || prof?.email || "");
+        setPhone(prof?.phone || "");
+        setCollege(prof?.college || "");
       }
 
-      // Fetch dynamic courses
+      // Check if we are in Modification / Re-submission mode
+      if (editEnrollmentId) {
+        try {
+          const { data: existingRec } = await supabase
+            .from("enrollments")
+            .select("*")
+            .eq("id", editEnrollmentId)
+            .maybeSingle();
+
+          if (existingRec) {
+            setIsEditMode(true);
+            if (existingRec.student_name) setName(existingRec.student_name);
+            if (existingRec.student_phone) setPhone(existingRec.student_phone);
+            if (existingRec.college) setCollege(existingRec.college);
+            if (existingRec.branch) setBranch(existingRec.branch);
+            if (existingRec.payment_method) setPaymentMethod(existingRec.payment_method);
+            if (existingRec.sender_number) setSenderNumber(existingRec.sender_number);
+            if (existingRec.trx_id) setTrxId(existingRec.trx_id);
+            if (existingRec.admin_note) setAdminNote(existingRec.admin_note);
+            if (existingRec.course_id) setSelectedCourseId(existingRec.course_id);
+          }
+        } catch (err) {
+          console.warn("Error loading editEnrollmentId:", err);
+        }
+      }
+
+      // Fetch dynamic courses directly from DB
       try {
         const localCourses = getStoredCourses();
         const { data: dbCourses } = await supabase
@@ -132,7 +157,7 @@ function CheckoutContent() {
           setCourses(localCourses);
         }
 
-        // Fetch payment details
+        // Fetch payment details directly from DB
         const items = await fetchPaymentDetailsFromDatabase();
         if (items) setPaymentDetailsList(items);
       } catch (err) {
@@ -304,6 +329,18 @@ function CheckoutContent() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             {/* Left Column: Course Summary & Guarantee Card */}
             <div className="lg:col-span-5 space-y-6">
+              {isEditMode && adminNote && (
+                <div className="bg-amber-500/15 border border-amber-500/40 rounded-3xl p-5 sm:p-6 space-y-2 text-amber-200 shadow-xl animate-bounce-subtle">
+                  <div className="flex items-center gap-2 font-bold text-sm text-amber-400">
+                    <Sparkles className="w-5 h-5" />
+                    <span>⚠️ অ্যাডমিন নির্দেশনা অনুযায়ী সংশোধন</span>
+                  </div>
+                  <p className="text-xs text-slate-200 leading-relaxed bg-amber-950/60 p-3 rounded-2xl border border-amber-500/30">
+                    <strong>নির্দেশনা:</strong> {adminNote}
+                  </p>
+                </div>
+              )}
+
               <div className="bg-[#0D2038] border border-white/10 rounded-3xl p-6 sm:p-7 space-y-5 shadow-2xl sticky top-24">
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#F59E0B]/10 border border-[#F59E0B]/30 text-[#FACC15] text-xs font-extrabold">
                   <Sparkles className="w-3.5 h-3.5" />

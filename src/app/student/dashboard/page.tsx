@@ -25,88 +25,97 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+import { ensureStudentCode } from "@/utils/studentIdGenerator";
+import ProgressLoader from "@/components/ProgressLoader";
+
 export default function StudentDashboard() {
   const [profile, setProfile] = useState<any>(null);
+  const [studentCode, setStudentCode] = useState<string>("");
   const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
   const [tests, setTests] = useState<any[]>([]);
   const [restricted, setRestricted] = useState<boolean>(false);
   const [appealText, setAppealText] = useState("");
   const [appealSuccess, setAppealSuccess] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const supabase = createClient();
 
   const loadData = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-
-    // Get Profile details
-    const { data: prof } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    let localSaved: any = {};
     try {
-      const raw = localStorage.getItem(`durbar_student_profile_${user.id}`);
-      if (raw) localSaved = JSON.parse(raw);
-    } catch {}
-
-    setProfile({
-      ...prof,
-      full_name: prof?.full_name || localSaved.full_name || "শিক্ষার্থী",
-      email: prof?.email || user.email,
-      avatar_url: prof?.avatar_url || localSaved.avatar_url || "",
-    });
-
-    // Check restrictions
-    const { data: restriction } = await supabase
-      .from("account_restrictions")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("is_blocked", true)
-      .maybeSingle();
-    if (restriction) {
-      setRestricted(true);
-    }
-
-    // Fetch enrollments
-    const freshLocal = await fetchEnrollmentsFromDatabase();
-    const studentRecs = freshLocal.filter((e) => {
-      if (user) {
-        if (e.student_id && e.student_id === user.id) return true;
-        if (user.email && e.student_email && e.student_email.toLowerCase() === user.email.toLowerCase()) return true;
-        if (prof?.phone && e.student_phone && (e.student_phone.includes(prof.phone) || prof.phone.includes(e.student_phone))) return true;
-        return false;
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
       }
-      return true;
-    });
 
-    const activeList = studentRecs.length > 0 ? studentRecs : freshLocal;
-    setEnrollments(activeList);
+      // Get or ensure Unique Student ID
+      const code = await ensureStudentCode(user.id, user.email);
+      setStudentCode(code);
 
-    const approvedCount = activeList.filter(
-      (e) => e.status === "approved" || (e.status as any) === "active"
-    ).length;
+      // Get Profile details directly from Supabase DB
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .maybeSingle();
 
-    if (approvedCount > 0) {
-      setTests([
-        { id: "t1", title: "পদার্থবিজ্ঞান ১ম ও ২য় পত্র ফাইনাল মক টেস্ট", time_limit_minutes: 60, total_marks: 100 },
-        { id: "t2", title: "উচ্চতর গণিত ক্যালকুলাস ও ভেক্টর স্পেশাল ড্রিল", time_limit_minutes: 45, total_marks: 50 },
-      ]);
-    } else {
-      setTests([]);
+      setProfile({
+        ...prof,
+        full_name: prof?.full_name || "শিক্ষার্থী",
+        email: prof?.email || user.email,
+        avatar_url: prof?.avatar_url || "",
+        student_code: prof?.student_code || code,
+      });
+
+      // Check restrictions
+      const { data: restriction } = await supabase
+        .from("account_restrictions")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("is_blocked", true)
+        .maybeSingle();
+
+      if (restriction) {
+        setRestricted(true);
+      }
+
+      // Fetch enrollments directly from pure Database API
+      const freshLocal = await fetchEnrollmentsFromDatabase();
+      const studentRecs = freshLocal.filter((e) => {
+        if (user) {
+          if (e.student_id && e.student_id === user.id) return true;
+          if (user.email && e.student_email && e.student_email.toLowerCase() === user.email.toLowerCase()) return true;
+          if (prof?.phone && e.student_phone && (e.student_phone.includes(prof.phone) || prof.phone.includes(e.student_phone))) return true;
+          return false;
+        }
+        return true;
+      });
+
+      setEnrollments(studentRecs);
+
+      const approvedCount = studentRecs.filter(
+        (e) => e.status === "approved" || (e.status as any) === "active"
+      ).length;
+
+      if (approvedCount > 0) {
+        setTests([
+          { id: "t1", title: "পদার্থবিজ্ঞান ১ম ও ২য় পত্র ফাইনাল মক টেস্ট", time_limit_minutes: 60, total_marks: 100 },
+          { id: "t2", title: "উচ্চতর গণিত ক্যালকুলাস ও ভেক্টর স্পেশাল ড্রিল", time_limit_minutes: 45, total_marks: 50 },
+        ]);
+      } else {
+        setTests([]);
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     loadData();
-    const unsub = subscribeEnrollmentStore(() => {
-      loadData();
-    });
-    return () => unsub();
+    const interval = setInterval(loadData, 6000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleAppeal = async (e: React.FormEvent) => {
@@ -132,9 +141,16 @@ export default function StudentDashboard() {
         {/* Top Profile Welcomer */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
           <div className="space-y-1">
-            <span className="text-xs font-bold text-[#FACC15] uppercase tracking-wider block">
-              student dashboard overview
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-[#FACC15] uppercase tracking-wider block">
+                student dashboard overview
+              </span>
+              {studentCode && (
+                <span className="text-[11px] font-black text-amber-300 bg-amber-400/10 px-2.5 py-0.5 rounded-full border border-amber-400/30">
+                  আইডি: {studentCode}
+                </span>
+              )}
+            </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
               স্বাগতম, {profile?.full_name || "শিক্ষার্থী"}!
             </h1>
@@ -142,8 +158,15 @@ export default function StudentDashboard() {
               শিক্ষা, শৃঙ্খলা ও মেন্টরশিপের মাধ্যমে আপনার ডিফেন্স অফিসার ভর্তি প্রিপারেশন বেগবান করুন।
             </p>
           </div>
-          <DashboardHeader role="student" />
+          <DashboardHeader
+            role="student"
+            studentCode={studentCode || profile?.student_code}
+            studentId={profile?.id}
+            studentEmail={profile?.email}
+          />
         </div>
+
+        {loading && <ProgressLoader label="ডাটাবেজ থেকে শিক্ষার্থীর তথ্য ও ভর্তি স্ট্যাটাস লোড হচ্ছে..." />}
 
         {/* NOTIFICATION CENTER FOR PENDING / MODIFICATION ACTION REQUIRED */}
         {actionRequiredEnrollments.map((record) => (

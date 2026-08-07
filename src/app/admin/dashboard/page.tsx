@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import DashboardHeader from "@/components/DashboardHeader";
+import ProgressLoader from "@/components/ProgressLoader";
 import { createClient } from "@/utils/supabase/client";
 import { Course } from "@/data/courses";
 import {
@@ -106,6 +107,7 @@ export default function AdminDashboard() {
 
   // Enrollment & Payment Review Center State
   const [enrollmentList, setEnrollmentList] = useState<EnrollmentRecord[]>(getStoredEnrollments());
+  const [enrollmentsLoading, setEnrollmentsLoading] = useState(false);
   const [enrollmentFilter, setEnrollmentFilter] = useState<string>("all");
   const [enrollmentSearch, setEnrollmentSearch] = useState<string>("");
 
@@ -320,9 +322,10 @@ export default function AdminDashboard() {
     });
 
     const loadEnrollments = () => {
+      setEnrollmentsLoading(true);
       fetchEnrollmentsFromDatabase().then((recs) => {
         if (recs) setEnrollmentList(recs);
-      });
+      }).finally(() => setEnrollmentsLoading(false));
     };
     loadEnrollments();
 
@@ -1263,6 +1266,9 @@ export default function AdminDashboard() {
         {/* TAB: ENROLLMENT & PAYMENT REVIEW CENTER */}
         {activeTab === "enrollments" && (
           <div className="space-y-8">
+            {enrollmentsLoading && (
+              <ProgressLoader label="ডাটাবেজ থেকে ভর্তি আবেদনসমূহ লোড হচ্ছে..." />
+            )}
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
               <div>
@@ -1377,6 +1383,11 @@ export default function AdminDashboard() {
                       <div>
                         <div className="flex items-center gap-2">
                           <h3 className="text-base font-extrabold text-white">{rec.student_name}</h3>
+                          {rec.student_code && (
+                            <span className="text-[11px] font-mono font-black text-amber-300 bg-amber-400/10 px-2.5 py-0.5 rounded-full border border-amber-400/30">
+                              {rec.student_code}
+                            </span>
+                          )}
                           <span
                             className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full capitalize ${
                               rec.status === "approved" || (rec.status as any) === "active"

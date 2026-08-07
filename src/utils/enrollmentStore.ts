@@ -1,9 +1,10 @@
 export interface EnrollmentRecord {
   id: string;
   student_id: string;
+  student_code?: string;
   student_email?: string;
   course_id: string;
-  course_title: string;
+  course_title?: string;
   course_price?: number;
   student_name: string;
   student_phone: string;
@@ -19,83 +20,95 @@ export interface EnrollmentRecord {
   updated_at?: string;
 }
 
-const STORAGE_KEY = "durbar_enrollment_requests_v1";
 const DEFAULT_RECORDS: EnrollmentRecord[] = [];
 
-const BLACKLISTED_TRX_IDS = new Set([
-  "ytertcch",
-  "9jas#21l",
-  "192124h10",
-  "9999999",
-]);
-
 export function getStoredEnrollments(): EnrollmentRecord[] {
-  if (typeof window === "undefined") return DEFAULT_RECORDS;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_RECORDS;
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return DEFAULT_RECORDS;
-
-    const cleanList = parsed.filter(
-      (e) => !e.trx_id || !BLACKLISTED_TRX_IDS.has(e.trx_id.trim().toLowerCase())
-    );
-
-    if (cleanList.length !== parsed.length) {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(cleanList));
-      } catch (e) {}
-    }
-
-    return cleanList;
-  } catch {
-    return DEFAULT_RECORDS;
-  }
+  return DEFAULT_RECORDS;
 }
 
-export function saveEnrollmentStore(record: EnrollmentRecord): EnrollmentRecord[] {
-  const current = getStoredEnrollments();
-  const existingIdx = current.findIndex(
-    (e) => e.id === record.id || (e.trx_id && e.trx_id === record.trx_id)
-  );
+export function subscribeEnrollmentStore(listener: () => void) {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener("durbar_enrollments_updated", listener);
+  return () => window.removeEventListener("durbar_enrollments_updated", listener);
+}
 
-  let updated: EnrollmentRecord[];
-  if (existingIdx >= 0) {
-    updated = [...current];
-    updated[existingIdx] = { ...updated[existingIdx], ...record };
-  } else {
-    updated = [record, ...current];
-  }
-
-  if (typeof window !== "undefined") {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    } catch (err) {
-      console.warn("localStorage quota exceeded, saving lightweight metadata without heavy images:", err);
-      try {
-        const lightweightList = updated.map((r) => ({
-          ...r,
-          payment_screenshot: r.payment_screenshot && r.payment_screenshot.length > 200 ? "" : r.payment_screenshot,
-        }));
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(lightweightList));
-      } catch (innerErr) {
-        console.warn("Could not write to localStorage:", innerErr);
+export async function fetchEnrollmentsFromDatabase(): Promise<EnrollmentRecord[]> {
+  try {
+    const res = await fetch("/api/enrollments", { cache: "no-store" });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && Array.isArray(data.enrollments)) {
+        return data.enrollments;
       }
     }
-    window.dispatchEvent(new Event("durbar_enrollments_updated"));
+  } catch (err) {
+    console.warn("fetchEnrollmentsFromDatabase API exception:", err);
   }
-  return updated;
+
+  return DEFAULT_RECORDS;
+}
+
+export async function submitEnrollmentRequest(
+  record: Omit<EnrollmentRecord, "id" | "status" | "created_at" | "updated_at">
+): Promise<EnrollmentRecord> {
+  const now = new Date().toISOString();
+  const generatedId = `ENR-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+  const fullRecord: EnrollmentRecord = {
+    ...record,
+    id: generatedId,
+    status: "pending",
+    created_at: now,
+    updated_at: now,
+  };
+
+  try {
+    const res = await fetch("/api/enrollments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(fullRecord),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      // API returns { success, record } — use the returned record
+      if (data.success && data.record) {
+        return data.record as EnrollmentRecord;
+      }
+    }
+  } catch (err) {
+    console.warn("submitEnrollmentRequest API warning:", err);
+  }
+
+  // Fallback: return the locally constructed record so UI still shows success
+  return fullRecord;
+}
+
+export async function updateEnrollmentStatusStore(
+  enrollmentId: string,
+  newStatus: "pending" | "approved" | "rejected" | "modification_needed",
+  adminNote?: string
+): Promise<EnrollmentRecord[]> {
+  try {
+    const res = await fetch("/api/enrollments", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: enrollmentId,
+        status: newStatus,
+        admin_note: adminNote || "",
+      }),
+    });
+    if (res.ok) {
+      return await fetchEnrollmentsFromDatabase();
+    }
+  } catch (err) {
+    console.warn("updateEnrollmentStatusStore API warning:", err);
+  }
+
+  return await fetchEnrollmentsFromDatabase();
 }
 
 export async function deleteEnrollmentRequestStore(enrollmentId: string): Promise<EnrollmentRecord[]> {
-  const current = getStoredEnrollments();
-  const updated = current.filter((e) => e.id !== enrollmentId);
-
-  if (typeof window !== "undefined") {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    window.dispatchEvent(new Event("durbar_enrollments_updated"));
-  }
-
   try {
     await fetch(`/api/enrollments?id=${encodeURIComponent(enrollmentId)}`, {
       method: "DELETE",
@@ -104,15 +117,10 @@ export async function deleteEnrollmentRequestStore(enrollmentId: string): Promis
     console.warn("deleteEnrollmentRequestStore API warning:", err);
   }
 
-  return updated;
+  return await fetchEnrollmentsFromDatabase();
 }
 
 export async function clearAllEnrollmentRequestsStore(): Promise<EnrollmentRecord[]> {
-  if (typeof window !== "undefined") {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
-    window.dispatchEvent(new Event("durbar_enrollments_updated"));
-  }
-
   try {
     await fetch("/api/enrollments?all=true", {
       method: "DELETE",
@@ -122,130 +130,4 @@ export async function clearAllEnrollmentRequestsStore(): Promise<EnrollmentRecor
   }
 
   return [];
-}
-
-export async function fetchEnrollmentsFromDatabase(): Promise<EnrollmentRecord[]> {
-  if (typeof window === "undefined") return getStoredEnrollments();
-
-  try {
-    // Fetch all combined enrollments from server API route
-    const res = await fetch("/api/enrollments", { cache: "no-store" });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.success && Array.isArray(data.enrollments)) {
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(data.enrollments));
-        } catch (e) {}
-        return data.enrollments;
-      }
-    }
-  } catch (err) {
-    console.warn("fetchEnrollmentsFromDatabase API exception:", err);
-  }
-
-  return getStoredEnrollments();
-}
-
-export async function submitEnrollmentRequest(
-  record: Omit<EnrollmentRecord, "id" | "created_at" | "status"> & { id?: string }
-): Promise<EnrollmentRecord> {
-  const rawId = record.id || `ENR-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
-  const now = new Date().toISOString();
-
-  const newRecord: EnrollmentRecord = {
-    ...record,
-    id: rawId,
-    status: "pending",
-    created_at: now,
-    updated_at: now,
-  };
-
-  // 1. Save locally for instant UI update
-  saveEnrollmentStore(newRecord);
-
-  // 2. Push to Server API route so Admin receives it instantly
-  try {
-    await fetch("/api/enrollments", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newRecord),
-    });
-  } catch (err) {
-    console.warn("submitEnrollmentRequest API post warning:", err);
-  }
-
-  return newRecord;
-}
-
-export async function updateEnrollmentStatusStore(
-  enrollmentId: string,
-  status: "approved" | "rejected" | "modification_needed",
-  admin_note?: string
-): Promise<EnrollmentRecord[]> {
-  const current = getStoredEnrollments();
-  const target = current.find((e) => e.id === enrollmentId);
-  const now = new Date().toISOString();
-
-  if (target) {
-    const updatedRecord: EnrollmentRecord = {
-      ...target,
-      status,
-      admin_note: admin_note || "",
-      updated_at: now,
-    };
-
-    saveEnrollmentStore(updatedRecord);
-
-    try {
-      await fetch("/api/enrollments", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: enrollmentId, status, admin_note }),
-      });
-    } catch (err) {
-      console.warn("updateEnrollmentStatusStore API patch warning:", err);
-    }
-  }
-
-  return getStoredEnrollments();
-}
-
-export async function resubmitEnrollmentRequestStore(
-  enrollmentId: string,
-  updatedFields: Partial<EnrollmentRecord>
-): Promise<EnrollmentRecord[]> {
-  const current = getStoredEnrollments();
-  const target = current.find((e) => e.id === enrollmentId);
-  const now = new Date().toISOString();
-
-  if (target) {
-    const updatedRecord: EnrollmentRecord = {
-      ...target,
-      ...updatedFields,
-      status: "pending",
-      admin_note: "",
-      updated_at: now,
-    };
-
-    saveEnrollmentStore(updatedRecord);
-
-    try {
-      await fetch("/api/enrollments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updatedRecord),
-      });
-    } catch (err) {
-      console.warn("resubmitEnrollmentRequestStore API post warning:", err);
-    }
-  }
-
-  return getStoredEnrollments();
-}
-
-export function subscribeEnrollmentStore(callback: () => void): () => void {
-  if (typeof window === "undefined") return () => {};
-  const handler = () => callback();
-  window.addEventListener("durbar_enrollments_updated", handler);
-  return () => window.removeEventListener("durbar_enrollments_updated", handler);
 }
