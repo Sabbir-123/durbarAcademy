@@ -16,6 +16,7 @@ import {
   Trophy,
   Video,
   CreditCard,
+  Compass,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -38,6 +39,7 @@ export default function DashboardSidebar({ role, activeTab, onTabChange, userNam
     student: [
       { id: "dashboard", label: "ড্যাশবোর্ড", icon: LayoutDashboard, href: "/student/dashboard" },
       { id: "courses", label: "আমার কোর্সসমূহ", icon: BookOpen, href: "/student/courses" },
+      { id: "all-courses", label: "সকল কোর্সসমূহ", icon: Compass, href: "/courses" },
       { id: "profile", label: "আমার প্রোফাইল", icon: UserCheck, href: "/student/profile" },
     ],
     teacher: [
