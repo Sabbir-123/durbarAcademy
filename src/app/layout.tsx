@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Hind_Siliguri, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import MotionGraphicsCanvas from "@/components/MotionGraphicsCanvas";
+import FloatingThemeToggler from "@/components/FloatingThemeToggler";
 
 const hindSiliguri = Hind_Siliguri({
   subsets: ["bengali", "latin"],
@@ -73,6 +74,7 @@ export default function RootLayout({
       <body suppressHydrationWarning className="min-h-full bg-[#07182E] text-white selection:bg-[#F59E0B] selection:text-black flex flex-col font-sans relative">
         <MotionGraphicsCanvas />
         <div className="relative z-10 flex-1 flex flex-col">{children}</div>
+        <FloatingThemeToggler />
       </body>
     </html>
   );
