@@ -3,7 +3,15 @@
 import { useState, useEffect } from "react";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import DashboardHeader from "@/components/DashboardHeader";
+import RegistrationModal from "@/components/RegistrationModal";
 import { createClient } from "@/utils/supabase/client";
+import {
+  getStoredEnrollments,
+  subscribeEnrollmentStore,
+  resubmitEnrollmentRequestStore,
+  EnrollmentRecord,
+  fetchEnrollmentsFromDatabase,
+} from "@/utils/enrollmentStore";
 import {
   BookOpen,
   ChevronRight,
@@ -13,15 +21,32 @@ import {
   CheckCircle2,
   Send,
   MessageSquare,
+  AlertTriangle,
+  Lock,
+  Edit,
+  X,
+  Upload,
+  RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
 
 export default function StudentCoursesPage() {
   const [profile, setProfile] = useState<any>(null);
-  const [courses, setCourses] = useState<any[]>([]);
+  const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
-  // Ticket states inside My Courses Page
+  // Modification Modal State
+  const [modTargetRecord, setModTargetRecord] = useState<EnrollmentRecord | null>(null);
+  const [modSenderNumber, setModSenderNumber] = useState("");
+  const [modTrxId, setModTrxId] = useState("");
+  const [modPaymentScreenshot, setModPaymentScreenshot] = useState("");
+  const [modSuccess, setModSuccess] = useState(false);
+
+  // Re-Enroll Checkout Modal State
+  const [reEnrollModalCourseId, setReEnrollModalCourseId] = useState<string | null>(null);
+
+  // Support Ticket States
   const [tickets, setTickets] = useState<any[]>([]);
   const [ticketSubject, setTicketSubject] = useState("");
   const [ticketDesc, setTicketDesc] = useState("");
@@ -29,17 +54,14 @@ export default function StudentCoursesPage() {
 
   const supabase = createClient();
 
-  useEffect(() => {
-    async function loadEnrolledCourses() {
-      setIsLoading(true);
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        setIsLoading(false);
-        return;
-      }
+  const loadData = async () => {
+    setIsLoading(true);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
+    if (user) {
+      setCurrentUser(user);
       const { data: prof } = await supabase
         .from("profiles")
         .select("*")
@@ -47,52 +69,64 @@ export default function StudentCoursesPage() {
         .maybeSingle();
       setProfile(prof);
 
-      // Load enrolled courses
-      const { data: enrollments } = await supabase
-        .from("enrollments")
-        .select("courses(*)")
-        .eq("student_id", user.id)
-        .eq("status", "active");
-
-      if (enrollments && enrollments.length > 0) {
-        setCourses(enrollments.map((e: any) => e.courses));
-      } else {
-        try {
-          const rawLocalEnrolled = localStorage.getItem(`durbar_enrolled_${user.id}`);
-          if (rawLocalEnrolled) {
-            const parsed = JSON.parse(rawLocalEnrolled);
-            setCourses(Array.isArray(parsed) ? parsed : []);
-          } else {
-            setCourses([]);
-          }
-        } catch {
-          setCourses([]);
-        }
-      }
-
-      // Load mentor tickets
-      try {
-        const rawTickets = localStorage.getItem(`durbar_tickets_${user.id}`);
-        if (rawTickets) {
-          setTickets(JSON.parse(rawTickets));
-        } else {
-          setTickets([
-            {
-              id: "t1",
-              subject: "পদার্থবিজ্ঞান ভেক্টর অধ্যায় ৩ গাণিতিক প্রশ্ন সমাধান",
-              status: "open",
-              created_at: "গতকাল",
-            },
-          ]);
-        }
-      } catch {
-        setTickets([]);
-      }
-
-      setIsLoading(false);
+      await fetchEnrollmentsFromDatabase();
+      const allLocal = getStoredEnrollments();
+      const studentRecs = allLocal.filter((e) => e.student_id === user.id);
+      setEnrollments(studentRecs);
+    } else {
+      const allLocal = getStoredEnrollments();
+      setEnrollments(allLocal);
     }
-    loadEnrolledCourses();
+
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    loadData();
+    const unsub = subscribeEnrollmentStore(() => {
+      loadData();
+    });
+    return () => unsub();
   }, []);
+
+  const handleModFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("পেমেন্ট রসিদ ফাইলের সাইজ সর্বোচ্চ ৫ মেগাবাইট (5MB) হতে পারবে।");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target?.result) {
+        setModPaymentScreenshot(event.target.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleResubmitModification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!modTargetRecord) return;
+    if (!modSenderNumber.trim() || !modTrxId.trim()) {
+      alert("অনুগ্রহ করে আপনার প্রেরক নম্বর ও ১২ ডিজিট TrxID প্রদান করুন।");
+      return;
+    }
+
+    await resubmitEnrollmentRequestStore(modTargetRecord.id, {
+      sender_number: modSenderNumber,
+      trx_id: modTrxId,
+      payment_screenshot: modPaymentScreenshot,
+    });
+
+    setModSuccess(true);
+    setTimeout(() => {
+      setModSuccess(false);
+      setModTargetRecord(null);
+    }, 2500);
+  };
 
   const handleTicketSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -139,10 +173,10 @@ export default function StudentCoursesPage() {
             </span>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-3">
               <BookOpen className="w-7 h-7 text-[#F59E0B]" />
-              <span>আমার কোর্সসমূহ ({courses.length}টি)</span>
+              <span>আমার কোর্সসমূহ ({enrollments.length}টি)</span>
             </h1>
             <p className="text-xs text-slate-300">
-              আপনার ভর্তি হওয়া কোর্স কারিকুলাম, চলমান ক্লাস এবং ১-অন-১ মেন্টর সহায়তা টিকিট ডেস্ক।
+              আপনার ভর্তি হওয়া কোর্স কারিকুলাম, পেমেন্ট যাঁচাই স্ট্যাটাস এবং ১-অন-১ মেন্টর সহায়তা টিকিট ডেস্ক।
             </p>
           </div>
           <DashboardHeader role="student" />
@@ -162,71 +196,164 @@ export default function StudentCoursesPage() {
               </div>
             ))}
           </div>
-        ) : courses.length > 0 ? (
+        ) : enrollments.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {courses.map((course) => (
-              <div
-                key={course.id}
-                className="bg-[#0D2038] border border-white/10 rounded-3xl p-6 sm:p-7 flex flex-col justify-between hover:border-[#F59E0B]/40 transition-all shadow-xl group"
-              >
-                <div className="space-y-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h2 className="text-lg sm:text-xl font-extrabold text-white leading-snug group-hover:text-[#FACC15] transition-colors">
-                        {course.title}
-                      </h2>
-                      <p className="text-xs text-slate-300 mt-1.5 line-clamp-2 leading-relaxed">
-                        {course.tagline || course.description}
-                      </p>
+            {enrollments.map((record) => {
+              const isApproved = record.status === "approved" || (record.status as any) === "active";
+              const isPending = record.status === "pending";
+              const isRejected = record.status === "rejected";
+              const isModNeeded = record.status === "modification_needed";
+
+              return (
+                <div
+                  key={record.id}
+                  className={`bg-[#0D2038] border rounded-3xl p-6 sm:p-7 flex flex-col justify-between transition-all shadow-xl ${
+                    isApproved
+                      ? "border-emerald-500/40 hover:border-emerald-400"
+                      : isPending
+                      ? "border-amber-500/40"
+                      : isModNeeded
+                      ? "border-sky-500/50"
+                      : "border-red-500/40"
+                  }`}
+                >
+                  <div className="space-y-4">
+                    {/* Course Title & Status Badge */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h2 className="text-lg sm:text-xl font-extrabold text-white leading-snug">
+                          {record.course_title}
+                        </h2>
+                        <p className="text-xs text-slate-300 mt-1">
+                          শাখা: <strong className="text-amber-400 font-bold capitalize">{record.branch}</strong> • ফি: ৳{record.course_price?.toLocaleString("bn-BD") || "৮,৫০০"}
+                        </p>
+                      </div>
+
+                      <span
+                        className={`text-[10px] font-extrabold px-3 py-1 rounded-full shrink-0 ${
+                          isApproved
+                            ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                            : isPending
+                            ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                            : isModNeeded
+                            ? "bg-sky-500/20 text-sky-300 border border-sky-500/30 animate-pulse"
+                            : "bg-red-500/20 text-red-300 border border-red-500/30"
+                        }`}
+                      >
+                        {isApproved
+                          ? "✅ ভর্তি অনুমোদিত"
+                          : isPending
+                          ? "⏳ পেমেন্ট যাঁচাইাধীন"
+                          : isModNeeded
+                          ? "⚠️ তথ্য সংশোধন প্রয়োজন"
+                          : "❌ আবেদন বাতিল"}
+                      </span>
                     </div>
-                    <span className="text-[10px] font-extrabold px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
-                      {course.courseMode === "online"
-                        ? "🌐 অনলাইন"
-                        : course.courseMode === "offline"
-                        ? "🏫 অফলাইন"
-                        : "🌐 অনলাইন ও 🏫 অফলাইন"}
-                    </span>
+
+                    {/* Status Alert Banners based on Admin Action */}
+                    {isPending && (
+                      <div className="bg-amber-500/10 border border-amber-500/30 text-amber-300 p-3.5 rounded-2xl text-xs space-y-1">
+                        <div className="font-bold flex items-center gap-1.5">
+                          <Clock className="w-4 h-4 text-amber-400 shrink-0" />
+                          <span>ভর্তি আবেদন পর্যবেক্ষণাধীন রয়েছে (Pending Approval)</span>
+                        </div>
+                        <p className="text-[11px] text-slate-300 leading-relaxed">
+                          আপনার পেমেন্ট (TrxID: <strong className="font-mono text-amber-400">{record.trx_id}</strong>) যাচাই করা হচ্ছে। অ্যাডমিন প্যানেল থেকে অনুমোদনের পর ২৪ ঘণ্টার মধ্যে ক্লাস এক্সেস চালু হবে।
+                        </p>
+                      </div>
+                    )}
+
+                    {isRejected && (
+                      <div className="bg-red-500/10 border border-red-500/30 text-red-300 p-3.5 rounded-2xl text-xs space-y-1.5">
+                        <div className="font-bold flex items-center gap-1.5 text-red-400">
+                          <AlertTriangle className="w-4 h-4 shrink-0" />
+                          <span>আপনার ভর্তি আবেদনটি বাতিল করা হয়েছে</span>
+                        </div>
+                        {record.admin_note && (
+                          <p className="text-[11px] text-slate-200 bg-red-950/40 p-2.5 rounded-xl border border-red-500/20">
+                            <strong>বাতিলের কারণ:</strong> {record.admin_note}
+                          </p>
+                        )}
+                        <p className="text-[10px] text-slate-400">
+                          ভুল TrxID বা পেমেন্ট ট্রানজেকশনের কারণে বাতিল হয়ে থাকলে নিচে বোতামে চেপে পুনরায় আবেদন করতে পারবেন।
+                        </p>
+                      </div>
+                    )}
+
+                    {isModNeeded && (
+                      <div className="bg-sky-500/10 border border-sky-500/30 text-sky-300 p-3.5 rounded-2xl text-xs space-y-2">
+                        <div className="font-bold flex items-center gap-1.5 text-sky-400">
+                          <Edit className="w-4 h-4 shrink-0" />
+                          <span>আপনার ভর্তি আবেদনে তথ্য সংশোধন প্রয়োজন</span>
+                        </div>
+                        {record.admin_note && (
+                          <p className="text-[11px] text-slate-200 bg-sky-950/40 p-2.5 rounded-xl border border-sky-500/20">
+                            <strong>অ্যাডমিন নির্দেশনা:</strong> {record.admin_note}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Course Metadata Grid */}
+                    <div className="grid grid-cols-2 gap-3 text-xs pt-1">
+                      <div className="bg-[#07182E] p-3 rounded-2xl border border-white/5 flex items-center gap-2 text-slate-300">
+                        <Clock className="w-4 h-4 text-[#F59E0B] shrink-0" />
+                        <span>পেমেন্ট নম্বর: <strong className="font-mono text-white">{record.sender_number}</strong></span>
+                      </div>
+                      <div className="bg-[#07182E] p-3 rounded-2xl border border-white/5 flex items-center gap-2 text-slate-300">
+                        <Award className="w-4 h-4 text-emerald-400 shrink-0" />
+                        <span>TrxID: <strong className="font-mono text-white">{record.trx_id}</strong></span>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Course Details Info */}
-                  <div className="grid grid-cols-2 gap-3 pt-2 text-xs">
-                    <div className="bg-[#07182E] p-3 rounded-2xl border border-white/5 flex items-center gap-2 text-slate-300">
-                      <Clock className="w-4 h-4 text-[#F59E0B] shrink-0" />
-                      <span>মেয়াদ: {course.duration || "নির্ধারিত সময়"}</span>
-                    </div>
-                    <div className="bg-[#07182E] p-3 rounded-2xl border border-white/5 flex items-center gap-2 text-slate-300">
-                      <Award className="w-4 h-4 text-emerald-400 shrink-0" />
-                      <span>সার্টিফিকেট অন্তর্ভুক্ত</span>
-                    </div>
-                  </div>
+                  {/* Bottom Action Footer */}
+                  <div className="pt-6 mt-6 border-t border-white/5 flex items-center justify-between gap-3">
+                    <span className="text-xs text-slate-400 font-mono">ID: {record.id.slice(0, 10)}</span>
 
-                  {/* Progress bar */}
-                  <div className="space-y-1.5 pt-2">
-                    <div className="flex justify-between text-[11px] font-bold">
-                      <span className="text-slate-300">কোর্স লাইভ অগ্রগতি</span>
-                      <span className="text-emerald-400">{course.progress || 0}% সম্পন্ন</span>
-                    </div>
-                    <div className="w-full h-2.5 bg-[#07182E] rounded-full overflow-hidden p-0.5 border border-white/5">
-                      <div
-                        className="h-full bg-gradient-to-r from-[#F59E0B] via-[#FACC15] to-emerald-400 rounded-full transition-all duration-500"
-                        style={{ width: `${course.progress || 0}%` }}
-                      />
-                    </div>
+                    {isApproved ? (
+                      <Link
+                        href={`/student/courses/${record.course_id}`}
+                        className="px-6 py-3 text-xs font-extrabold text-black bg-gradient-to-r from-[#F59E0B] to-[#FACC15] rounded-xl hover:scale-105 transition-all shadow-lg gold-glow flex items-center gap-2"
+                      >
+                        <span>ক্লাসে প্রবেশ করুন</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </Link>
+                    ) : isPending ? (
+                      <button
+                        disabled
+                        className="px-5 py-2.5 text-xs font-bold text-slate-400 bg-white/5 rounded-xl border border-white/10 cursor-not-allowed flex items-center gap-2"
+                        title="অ্যাডমিন প্যানেল থেকে অনুমোদন শেষ হলে ক্লাস এক্সেস সক্রিয় হবে"
+                      >
+                        <Lock className="w-3.5 h-3.5" />
+                        <span>অনুমোদনের অপেক্ষায়</span>
+                      </button>
+                    ) : isModNeeded ? (
+                      <button
+                        onClick={() => {
+                          setModTargetRecord(record);
+                          setModSenderNumber(record.sender_number || "");
+                          setModTrxId(record.trx_id || "");
+                          setModPaymentScreenshot(record.payment_screenshot || "");
+                        }}
+                        className="px-5 py-2.5 text-xs font-extrabold text-slate-950 bg-sky-400 hover:bg-sky-300 rounded-xl shadow-lg transition-all flex items-center gap-2 animate-bounce"
+                      >
+                        <Edit className="w-4 h-4" />
+                        <span>তথ্য সংশোধন ও পুনর্প্রেরণ করুন</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => setReEnrollModalCourseId(record.course_id)}
+                        className="px-5 py-2.5 text-xs font-extrabold text-white bg-red-600 hover:bg-red-500 rounded-xl shadow-lg transition-all flex items-center gap-2"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        <span>পুনরায় ভর্তি আবেদন করুন</span>
+                      </button>
+                    )}
                   </div>
                 </div>
-
-                <div className="pt-6 mt-6 border-t border-white/5 flex items-center justify-between">
-                  <span className="text-xs text-slate-400">ব্যাচ: {course.batch_code || "নিয়মিত ব্যাচ"}</span>
-                  <Link
-                    href={`/student/courses/${course.id}`}
-                    className="px-6 py-3 text-xs font-extrabold text-black bg-gradient-to-r from-[#F59E0B] to-[#FACC15] rounded-xl hover:scale-105 transition-all shadow-lg gold-glow flex items-center gap-2"
-                  >
-                    <span>ক্লাসে প্রবেশ করুন</span>
-                    <ChevronRight className="w-4 h-4" />
-                  </Link>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="bg-[#0D2038] border border-white/10 rounded-3xl p-12 text-center space-y-5 shadow-2xl max-w-2xl mx-auto my-4">
@@ -371,6 +498,114 @@ export default function StudentCoursesPage() {
             </div>
           </div>
         </section>
+
+        {/* ------------------------------------------------------------- */}
+        {/* STUDENT ENROLLMENT MODIFICATION FORM MODAL */}
+        {/* ------------------------------------------------------------- */}
+        {modTargetRecord && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="bg-[#0D2038] border border-white/15 rounded-3xl w-full max-w-lg p-6 sm:p-7 space-y-5 shadow-2xl relative">
+              <button
+                onClick={() => setModTargetRecord(null)}
+                className="absolute top-6 right-6 p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="space-y-1">
+                <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-sky-500/10 border border-sky-500/30 text-sky-400 text-[11px] font-bold">
+                  <Edit className="w-3.5 h-3.5" />
+                  <span>ভর্তি তথ্য সংশোধন ও পুনর্প্রেরণ</span>
+                </div>
+                <h3 className="text-xl font-bold text-white">আবেদনের তথ্য আপডেট করুন</h3>
+                <p className="text-xs text-slate-300">
+                  কোর্স: <strong className="text-white">{modTargetRecord.course_title}</strong>
+                </p>
+              </div>
+
+              {modTargetRecord.admin_note && (
+                <div className="p-3 bg-[#07182E] rounded-xl border border-sky-500/30 text-xs text-sky-300">
+                  <strong>অ্যাডমিন নির্দেশনা:</strong> {modTargetRecord.admin_note}
+                </div>
+              )}
+
+              {modSuccess && (
+                <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 p-3.5 rounded-xl text-xs font-bold flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>আপনার তথ্য সফলভাবে পুনর্প্রেরণ করা হয়েছে! অ্যাডমিন পর্যালোচনা করছে।</span>
+                </div>
+              )}
+
+              <form onSubmit={handleResubmitModification} className="space-y-4 text-xs">
+                <div>
+                  <label className="font-bold text-slate-300 block mb-1">প্রেরক মোবাইল/ব্যাংক নম্বর:*</label>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="যে নম্বর থেকে টাকা পাঠিয়েছেন"
+                    value={modSenderNumber}
+                    onChange={(e) => setModSenderNumber(e.target.value)}
+                    className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white focus:border-[#F59E0B] outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-300 block mb-1">পেমেন্ট ট্রানজেকশন আইডি (TrxID):*</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="১২ ডিজিটের TrxID"
+                    value={modTrxId}
+                    onChange={(e) => setModTrxId(e.target.value)}
+                    className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-white font-mono focus:border-[#F59E0B] outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-300 block mb-1">পেমেন্ট স্ক্রিনশট (আপডেট করুন):</label>
+                  <div className="flex items-center gap-3">
+                    <label className="flex-1 bg-[#07182E] border border-dashed border-white/20 rounded-xl p-3 text-slate-300 cursor-pointer flex items-center justify-center gap-2 hover:border-[#F59E0B]">
+                      <Upload className="w-4 h-4 text-[#F59E0B]" />
+                      <span>{modPaymentScreenshot ? "ছবি পরিবর্তন করুন" : "নতুন রসিদ আপলোড করুন"}</span>
+                      <input type="file" accept="image/*" onChange={handleModFileChange} className="hidden" />
+                    </label>
+                    {modPaymentScreenshot && (
+                      <div className="w-12 h-12 rounded-xl border border-white/20 overflow-hidden relative shrink-0">
+                        <img src={modPaymentScreenshot} alt="Preview" className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setModTargetRecord(null)}
+                    className="w-1/2 py-3 bg-white/5 border border-white/10 text-slate-300 hover:text-white rounded-xl font-bold"
+                  >
+                    বাতিল
+                  </button>
+                  <button
+                    type="submit"
+                    className="w-1/2 py-3 bg-gradient-to-r from-[#F59E0B] to-[#FACC15] text-black font-black rounded-xl hover:scale-[1.01] transition-all shadow-lg"
+                  >
+                    সংশোধিত তথ্য জমা দিন
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ------------------------------------------------------------- */}
+        {/* RE-ENROLL CHECKOUT MODAL */}
+        {/* ------------------------------------------------------------- */}
+        {reEnrollModalCourseId && (
+          <RegistrationModal
+            initialCourseId={reEnrollModalCourseId}
+            onClose={() => setReEnrollModalCourseId(null)}
+          />
+        )}
       </main>
     </div>
   );

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { COURSES } from "@/data/courses";
 import { getStoredCourses } from "@/utils/courseStore";
-import { X, CheckCircle2, ShieldCheck, CreditCard, Sparkles, PhoneCall, Copy, Check, Info } from "lucide-react";
+import { X, CheckCircle2, ShieldCheck, CreditCard, Sparkles, PhoneCall, Copy, Check, Info, Upload, Image as ImageIcon } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import {
   getStoredPaymentDetails,
@@ -12,6 +12,7 @@ import {
   fetchPaymentDetailsFromDatabase,
   PaymentDetail,
 } from "@/utils/paymentDetailStore";
+import { submitEnrollmentRequest } from "@/utils/enrollmentStore";
 
 interface RegistrationModalProps {
   initialCourseId?: string;
@@ -41,7 +42,9 @@ export default function RegistrationModal({ initialCourseId, onClose }: Registra
   const [college, setCollege] = useState("");
   const [branch, setBranch] = useState("online");
   const [paymentMethod, setPaymentMethod] = useState("bkash");
+  const [senderNumber, setSenderNumber] = useState("");
   const [trxId, setTrxId] = useState("");
+  const [paymentScreenshot, setPaymentScreenshot] = useState("");
   const [trackingId, setTrackingId] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -194,18 +197,62 @@ export default function RegistrationModal({ initialCourseId, onClose }: Registra
     }
   }, [paymentMethods]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleScreenshotFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("পেমেন্ট রসিদ ফাইলের সাইজ সর্বোচ্চ ৫ মেগাবাইট (5MB) হতে পারবে।");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target?.result) {
+        setPaymentScreenshot(event.target.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !phone) {
       alert("অনুগ্রহ করে আপনার নাম এবং মোবাইল নম্বর প্রদান করুন।");
       return;
     }
     if (!trxId.trim()) {
-      alert("অনুগ্রহ করে আপনার পেমেন্ট ট্রানজেকশন আইডি (TrxID) বা প্রেরক মোবাইল নম্বর প্রদান করুন।");
+      alert("অনুগ্রহ করে আপনার পেমেন্ট ট্রানজেকশন আইডি (TrxID) প্রদান করুন।");
       return;
     }
-    const generatedId = `DA-2026-${Math.floor(1000 + Math.random() * 9000)}`;
-    setTrackingId(generatedId);
+    if (!senderNumber.trim()) {
+      alert("অনুগ্রহ করে যে নম্বর থেকে ফি পাঠিয়েছেন (প্রেরক মোবাইল/ব্যাংক নম্বর) তা উল্লেখ করুন।");
+      return;
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const studentId = user?.id || `guest-${Date.now()}`;
+
+    const newReq = await submitEnrollmentRequest({
+      student_id: studentId,
+      student_email: user?.email || "",
+      course_id: selectedCourse.id,
+      course_title: selectedCourse.title,
+      course_price: selectedCourse.price,
+      student_name: name,
+      student_phone: phone,
+      college: college,
+      branch: branch,
+      payment_method: paymentMethod,
+      sender_number: senderNumber,
+      trx_id: trxId,
+      payment_screenshot: paymentScreenshot,
+    });
+
+    setTrackingId(newReq.id);
     setIsSuccess(true);
   };
 
@@ -416,24 +463,60 @@ export default function RegistrationModal({ initialCourseId, onClose }: Registra
               </div>
             )}
 
-            {/* Transaction ID / Payment Number Field */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
+            {/* Sender Number & Transaction ID Fields */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-300">
-                  পেমেন্ট ট্রানজেকশন আইডি (TrxID) / প্রেরক নম্বর:*
+                  প্রেরক মোবাইল/ব্যাংক নম্বর:*
                 </label>
-                <span className="text-[10px] text-amber-400 font-semibold">
-                  (ফি পাঠানোর পর প্রাপ্ত TrxID লিখুন)
-                </span>
+                <input
+                  type="tel"
+                  required
+                  placeholder="যে নম্বর থেকে টাকা পাঠিয়েছেন"
+                  value={senderNumber}
+                  onChange={(e) => setSenderNumber(e.target.value)}
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:border-[#F59E0B] outline-none"
+                />
               </div>
-              <input
-                type="text"
-                required
-                placeholder="যেমন: 9J8A7B6C5D অথবা প্রেরক মোবাইল নম্বর"
-                value={trxId}
-                onChange={(e) => setTrxId(e.target.value)}
-                className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:border-[#F59E0B] outline-none"
-              />
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-300">
+                  পেমেন্ট ট্রানজেকশন আইডি (TrxID):*
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="যেমন: 9J8A7B6C5D"
+                  value={trxId}
+                  onChange={(e) => setTrxId(e.target.value)}
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:border-[#F59E0B] outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Payment Screenshot Upload */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-300 flex items-center justify-between">
+                <span>পেমেন্ট রসিদ / স্ক্রিনশট (অপশনাল):</span>
+                <span className="text-[10px] text-slate-400">মেগাবাইট সর্বোচ্চ ৫MB</span>
+              </label>
+              <div className="flex items-center gap-3">
+                <label className="flex-1 bg-[#07182E] border border-dashed border-white/20 hover:border-[#F59E0B] rounded-xl p-3 text-xs text-slate-300 cursor-pointer flex items-center justify-center gap-2 transition-all">
+                  <Upload className="w-4 h-4 text-[#F59E0B]" />
+                  <span>{paymentScreenshot ? "ছবি পরিবর্তন করুন" : "পেমেন্ট স্ক্রিনশট আপলোড করুন"}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleScreenshotFileChange}
+                    className="hidden"
+                  />
+                </label>
+                {paymentScreenshot && (
+                  <div className="w-10 h-10 rounded-xl border border-white/20 overflow-hidden relative shrink-0">
+                    <img src={paymentScreenshot} alt="Preview" className="w-full h-full object-cover" />
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Total Fee & Submit */}
@@ -447,68 +530,62 @@ export default function RegistrationModal({ initialCourseId, onClose }: Registra
 
               <button
                 type="submit"
-                className="w-full py-3.5 text-xs font-bold text-black bg-gradient-to-r from-[#F59E0B] via-[#FACC15] to-[#F59E0B] rounded-xl shadow-lg gold-glow hover:scale-[1.01] active:scale-[0.99] transition-all"
+                className="w-full py-3.5 text-xs font-extrabold text-black bg-gradient-to-r from-[#F59E0B] via-[#FACC15] to-[#F59E0B] rounded-xl shadow-lg gold-glow hover:scale-[1.01] active:scale-[0.99] transition-all"
               >
-                আবেদন নিশ্চিত করুন ও ফি প্রদান করুন
+                ভর্তি নিশ্চিত ও আবেদন জমা দিন
               </button>
             </div>
           </form>
         ) : (
-          /* Success Screen */
-          <div className="text-center space-y-5 py-6">
-            <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center mx-auto text-emerald-400">
+          /* Thank You Admission Pop-up Modal */
+          <div className="text-center space-y-5 py-4">
+            <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center mx-auto text-emerald-400 shadow-xl animate-bounce">
               <CheckCircle2 className="w-10 h-10" />
             </div>
 
             <div className="space-y-2">
-              <h3 className="text-2xl font-extrabold text-white">ভর্তি আবেদন সফলভাবে গৃহীত হয়েছে!</h3>
+              <h3 className="text-2xl font-black text-white leading-tight">
+                ভর্তি আবেদনের জন্য ধন্যবাদ!
+              </h3>
               <p className="text-xs text-slate-300 max-w-md mx-auto leading-relaxed">
-                অভিনন্দন <span className="text-[#F59E0B] font-bold">{name}</span>! আমাদের টিম মেম্বার কর্তৃক আপনার পেমেন্ট ট্রানজেকশন যাঁচাই করে অতিসত্ত্বর আপনার ভর্তি চূড়ান্ত নিশ্চিত করা হবে।
+                আমাদের অ্যাডমিন প্যানেল থেকে আপনার পেমেন্ট ট্রানজেকশন যাঁচাই করে <strong className="text-[#FACC15]">আগামী ২৪ ঘণ্টার মধ্যে</strong> ভর্তি নিশ্চিত করা হবে এবং আপনাকে নোটিফিকেশনের মাধ্যমে জানানো হবে।
               </p>
             </div>
 
-            <div className="bg-[#07182E] p-4 rounded-2xl border border-white/10 text-xs space-y-3 text-left max-w-md mx-auto">
+            <div className="bg-[#07182E] p-4 rounded-2xl border border-white/10 text-xs space-y-2.5 text-left max-w-md mx-auto">
               <div className="flex justify-between border-b border-white/5 pb-2">
-                <span className="text-slate-400">রেফারেন্স ট্র্যাকিং আইডি:</span>
-                <span className="text-[#F59E0B] font-bold font-mono">{trackingId || "DA-2026-8849"}</span>
+                <span className="text-slate-400">আবেদন ট্র্যাকিং নম্বর:</span>
+                <span className="text-[#F59E0B] font-extrabold font-mono">{trackingId}</span>
               </div>
               <div className="flex justify-between border-b border-white/5 pb-2">
                 <span className="text-slate-400">মনোনীত কোর্স:</span>
                 <span className="text-white font-bold">{selectedCourse.title}</span>
               </div>
               <div className="flex justify-between border-b border-white/5 pb-2">
-                <span className="text-slate-400">পেমেন্ট মেথড ও TrxID:</span>
-                <span className="text-amber-400 font-bold uppercase">{paymentMethod} ({trxId})</span>
+                <span className="text-slate-400">প্রেরক নম্বর & TrxID:</span>
+                <span className="text-amber-300 font-bold font-mono">{senderNumber} ({trxId})</span>
               </div>
               <div className="flex justify-between border-b border-white/5 pb-2">
-                <span className="text-slate-400">মনোনীত শাখা:</span>
-                <span className="text-emerald-400 font-bold capitalize">{branch}</span>
-              </div>
-              
-              {/* COURSE START DATE DISPLAY */}
-              <div className="p-3 bg-[#0D2038] rounded-xl border border-[#F59E0B]/30 space-y-1">
-                <span className="text-[10px] font-bold text-[#FACC15] uppercase tracking-wider block">
-                  🗓️ ওরিয়েন্টেশন ও ক্লাস শুরুর তারিখ:
+                <span className="text-slate-400">আবেদনের স্ট্যাটাস:</span>
+                <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold">
+                  ⏳ পর্যবেক্ষণাধীন (Pending Admin Review)
                 </span>
-                <p className="text-xs font-bold text-white">
-                  {selectedCourse.startDate || "১৫ আগস্ট, ২০২৬"} (এডমিন কর্তৃক নির্ধারিত)
-                </p>
               </div>
             </div>
 
-            <div className="flex items-center justify-center gap-2 text-xs text-slate-400 bg-white/5 p-3 rounded-xl">
+            <div className="flex items-center justify-center gap-2 text-xs text-slate-300 bg-white/5 p-3 rounded-xl">
               <PhoneCall className="w-4 h-4 text-[#F59E0B] shrink-0" />
-              <span>আমাদের একাডেমি প্রতিনিধি পেমেন্ট যাঁচাই শেষে আপনাকে কল দেবেন (১৬৮৯৯)।</span>
+              <span>জরুরি প্রয়োজনে হেল্পলাইন: ১৬৮৯৯ (সকাল ৯টা - রাত ১০টা)</span>
             </div>
 
             <button
               onClick={() => {
                 onClose();
-                window.location.href = "/complete-profile";
+                window.location.href = "/student/dashboard";
               }}
               className="w-full py-3.5 text-xs font-black text-black bg-gradient-to-r from-[#F59E0B] via-[#FACC15] to-[#F59E0B] rounded-xl shadow-lg hover:scale-[1.01] transition-all"
             >
-              প্রোফাইল তথ্য সম্পূর্ণ করুন ও ড্যাশবোর্ডে যান
+              ড্যাশবোর্ডে প্রবেশ করুন
             </button>
           </div>
         )}

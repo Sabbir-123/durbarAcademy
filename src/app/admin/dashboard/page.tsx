@@ -44,6 +44,13 @@ import {
   PaymentDetail,
 } from "@/utils/paymentDetailStore";
 import {
+  getStoredEnrollments,
+  fetchEnrollmentsFromDatabase,
+  updateEnrollmentStatusStore,
+  subscribeEnrollmentStore,
+  EnrollmentRecord,
+} from "@/utils/enrollmentStore";
+import {
   Users,
   ShieldCheck,
   Trash2,
@@ -92,8 +99,18 @@ export default function AdminDashboard() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [successStories, setSuccessStories] = useState<StudentSuccess[]>([]);
   const [activeTab, setActiveTab] = useState<
-    "dashboard" | "users" | "courses" | "stories" | "finance" | "payment" | "audit"
+    "dashboard" | "enrollments" | "users" | "courses" | "stories" | "finance" | "payment" | "audit"
   >("dashboard");
+
+  // Enrollment & Payment Review Center State
+  const [enrollmentList, setEnrollmentList] = useState<EnrollmentRecord[]>(getStoredEnrollments());
+  const [enrollmentFilter, setEnrollmentFilter] = useState<string>("all");
+  const [enrollmentSearch, setEnrollmentSearch] = useState<string>("");
+
+  const [reviewModalOpen, setReviewModalOpen] = useState<boolean>(false);
+  const [reviewTargetRecord, setReviewTargetRecord] = useState<EnrollmentRecord | null>(null);
+  const [reviewActionType, setReviewActionType] = useState<"approved" | "rejected" | "modification_needed" | null>(null);
+  const [reviewAdminNote, setReviewAdminNote] = useState<string>("");
 
   // Payment Details Management State
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetail[]>([]);
@@ -274,12 +291,12 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const hash = window.location.hash.replace("#", "");
-      if (["dashboard", "users", "courses", "stories", "finance", "payment", "audit"].includes(hash)) {
+      if (["dashboard", "enrollments", "users", "courses", "stories", "finance", "payment", "audit"].includes(hash)) {
         setActiveTab(hash as any);
       }
     }
 
-    // Sync local stored users, courses, success stories, payment details, and audit logs
+    // Sync local stored users, courses, success stories, payment details, enrollments, and audit logs
     setUsersList(getStoredUsers());
     const unsubUsers = subscribeUserStore(() => {
       setUsersList(getStoredUsers());
@@ -298,6 +315,14 @@ export default function AdminDashboard() {
     setPaymentDetails(getStoredPaymentDetails());
     const unsubPayment = subscribePaymentDetailsStore(() => {
       setPaymentDetails(getStoredPaymentDetails());
+    });
+
+    setEnrollmentList(getStoredEnrollments());
+    const unsubEnrollments = subscribeEnrollmentStore(() => {
+      setEnrollmentList(getStoredEnrollments());
+    });
+    fetchEnrollmentsFromDatabase().then((recs) => {
+      if (recs && recs.length > 0) setEnrollmentList(recs);
     });
 
     setAuditLogs(getStoredAuditLogs());
@@ -350,6 +375,8 @@ export default function AdminDashboard() {
       unsubUsers();
       unsubCourses();
       unsubStories();
+      unsubPayment();
+      unsubEnrollments();
     };
   }, []);
 
@@ -1224,6 +1251,247 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: ENROLLMENT & PAYMENT REVIEW CENTER */}
+        {activeTab === "enrollments" && (
+          <div className="space-y-8">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+              <div>
+                <h2 className="text-xl font-black text-white flex items-center gap-2">
+                  <CheckCircle2 className="w-6 h-6 text-[#F59E0B]" />
+                  <span>ভর্তি আবেদন ও পেমেন্ট ভেরিফিকেশন সেন্টার ({enrollmentList.length})</span>
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  শিক্ষার্থীদের প্রেরিত TrxID, প্রেরক নম্বর ও পেমেন্ট স্ক্রিনশট যাঁচাই করে ভর্তি অনুমোদন, বাতিল বা সংশোধন নির্দেশ দিন।
+                </p>
+              </div>
+              <DashboardHeader role="admin" />
+            </div>
+
+            {/* 4 Stat Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-[#0D2038] border border-amber-500/30 p-5 rounded-3xl space-y-1 shadow-md">
+                <span className="text-xs font-bold text-amber-400">⏳ অপেক্ষমান (Pending Review)</span>
+                <p className="text-2xl font-black text-white">
+                  {enrollmentList.filter((e) => e.status === "pending").length} টি
+                </p>
+                <span className="text-[10px] text-slate-400">পেমেন্ট যাঁচাইয়ের জন্য অপেক্ষমান</span>
+              </div>
+
+              <div className="bg-[#0D2038] border border-emerald-500/30 p-5 rounded-3xl space-y-1 shadow-md">
+                <span className="text-xs font-bold text-emerald-400">✅ অনুমোদিত (Approved)</span>
+                <p className="text-2xl font-black text-white">
+                  {enrollmentList.filter((e) => e.status === "approved" || (e.status as any) === "active").length} টি
+                </p>
+                <span className="text-[10px] text-slate-400">ক্লাস এক্সেস চালু রয়েছে</span>
+              </div>
+
+              <div className="bg-[#0D2038] border border-red-500/30 p-5 rounded-3xl space-y-1 shadow-md">
+                <span className="text-xs font-bold text-red-400">❌ বাতিলকৃত (Rejected)</span>
+                <p className="text-2xl font-black text-white">
+                  {enrollmentList.filter((e) => e.status === "rejected").length} টি
+                </p>
+                <span className="text-[10px] text-slate-400">ভুল TrxID/পেমেন্টের জন্য বাতিল</span>
+              </div>
+
+              <div className="bg-[#0D2038] border border-sky-500/30 p-5 rounded-3xl space-y-1 shadow-md">
+                <span className="text-xs font-bold text-sky-400">⚠️ সংশোধন প্রয়োজন (Modification Needed)</span>
+                <p className="text-2xl font-black text-white">
+                  {enrollmentList.filter((e) => e.status === "modification_needed").length} টি
+                </p>
+                <span className="text-[10px] text-slate-400">শিক্ষার্থী তথ্যাবলী আপডেট করছে</span>
+              </div>
+            </div>
+
+            {/* Filter Pills & Search */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-[#0D2038] p-4 rounded-2xl border border-white/10">
+              <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto pb-2 sm:pb-0">
+                {[
+                  { id: "all", label: "সকল আবেদন" },
+                  { id: "pending", label: "⏳ অপেক্ষমান" },
+                  { id: "approved", label: "✅ অনুমোদিত" },
+                  { id: "rejected", label: "❌ বাতিলকৃত" },
+                  { id: "modification_needed", label: "⚠️ সংশোধন নির্দেশ" },
+                ].map((f) => (
+                  <button
+                    key={f.id}
+                    onClick={() => setEnrollmentFilter(f.id)}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                      enrollmentFilter === f.id
+                        ? "bg-[#F59E0B] text-black shadow-md"
+                        : "bg-[#07182E] text-slate-300 hover:text-white border border-white/5"
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="relative w-full sm:w-64">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                <input
+                  type="text"
+                  placeholder="নাম, ফোন, TrxID দিয়ে খুঁজুন..."
+                  value={enrollmentSearch}
+                  onChange={(e) => setEnrollmentSearch(e.target.value)}
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl pl-9 pr-4 py-2 text-xs text-white outline-none focus:border-[#F59E0B]"
+                />
+              </div>
+            </div>
+
+            {/* Applications List */}
+            <div className="space-y-4">
+              {enrollmentList
+                .filter((rec) => {
+                  if (enrollmentFilter !== "all") {
+                    if (enrollmentFilter === "approved" && (rec.status === "approved" || (rec.status as any) === "active")) return true;
+                    if (rec.status !== enrollmentFilter) return false;
+                  }
+                  if (enrollmentSearch) {
+                    const q = enrollmentSearch.toLowerCase();
+                    return (
+                      rec.student_name?.toLowerCase().includes(q) ||
+                      rec.student_phone?.includes(q) ||
+                      rec.course_title?.toLowerCase().includes(q) ||
+                      rec.trx_id?.toLowerCase().includes(q) ||
+                      rec.sender_number?.includes(q)
+                    );
+                  }
+                  return true;
+                })
+                .map((rec) => (
+                  <div
+                    key={rec.id}
+                    className="bg-[#0D2038] border border-white/10 rounded-3xl p-6 space-y-4 hover:border-[#F59E0B]/30 transition-all shadow-lg"
+                  >
+                    <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 border-b border-white/10 pb-4">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-base font-extrabold text-white">{rec.student_name}</h3>
+                          <span
+                            className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full capitalize ${
+                              rec.status === "approved" || (rec.status as any) === "active"
+                                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                                : rec.status === "rejected"
+                                ? "bg-red-500/20 text-red-300 border border-red-500/30"
+                                : rec.status === "modification_needed"
+                                ? "bg-sky-500/20 text-sky-300 border border-sky-500/30"
+                                : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                            }`}
+                          >
+                            {rec.status === "approved" || (rec.status as any) === "active"
+                              ? "✅ অনুমোদিত (Active)"
+                              : rec.status === "rejected"
+                              ? "❌ বাতিলকৃত (Rejected)"
+                              : rec.status === "modification_needed"
+                              ? "⚠️ সংশোধন নির্দেশিত (Action Needed)"
+                              : "⏳ অপেক্ষমান (Pending)"}
+                          </span>
+                        </div>
+                        <p className="text-xs text-amber-400 font-bold mt-1">
+                          কোর্স: {rec.course_title} — (৳{rec.course_price?.toLocaleString("bn-BD") || "৮,৫০০"})
+                        </p>
+                      </div>
+
+                      {/* Admin Action Buttons */}
+                      <div className="flex items-center gap-2 flex-wrap shrink-0">
+                        <button
+                          onClick={async () => {
+                            if (confirm(`আপনি কি ${rec.student_name}-এর ${rec.course_title} কোর্সে ভর্তি অনুমোদন করতে চান?`)) {
+                              await updateEnrollmentStatusStore(rec.id, "approved", "অ্যাডমিন কর্তৃক ভর্তি অনুমোদন সম্পন্ন হয়েছে।");
+                              await logAuditAction("ভর্তি অনুমোদন", `শিক্ষার্থী ${rec.student_name}-এর (${rec.course_title}) ভর্তি অনুমোদন করা হয়েছে।`);
+                              alert("ভর্তি অনুমোদন সম্পন্ন হয়েছে!");
+                            }
+                          }}
+                          className="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-black transition-all flex items-center gap-1 shadow-md"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>অনুমোদন করুন</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setReviewTargetRecord(rec);
+                            setReviewActionType("modification_needed");
+                            setReviewAdminNote(rec.admin_note || "অনুগ্রহ করে প্রেরক নম্বর, ১২ ডিজিট TrxID এবং সঠিক পেমেন্ট রসিদের স্ক্রিনশট রিলোড/আপডেট করুন।");
+                            setReviewModalOpen(true);
+                          }}
+                          className="px-3.5 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-black text-xs font-black transition-all flex items-center gap-1 shadow-md"
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                          <span>সংশোধন নির্দেশ</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setReviewTargetRecord(rec);
+                            setReviewActionType("rejected");
+                            setReviewAdminNote(rec.admin_note || "ভুল পেমেন্ট ট্রানজেকশন আইডি (TrxID) অথবা ফি প্রদান ব্যতীত আবেদন জমা দেওয়া হয়েছে।");
+                            setReviewModalOpen(true);
+                          }}
+                          className="px-3.5 py-2 rounded-xl bg-red-500 hover:bg-red-400 text-white text-xs font-black transition-all flex items-center gap-1 shadow-md"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                          <span>বাতিল করুন</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Request Details Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs bg-[#07182E] p-4 rounded-2xl border border-white/5">
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">শিক্ষার্থীর ফোন:</span>
+                        <strong className="text-white font-mono">{rec.student_phone}</strong>
+                        {rec.college && <span className="text-[10px] text-slate-400 block mt-0.5">{rec.college}</span>}
+                      </div>
+
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">পেমেন্ট মেথড & প্রেরক নম্বর:</span>
+                        <strong className="text-amber-300 font-bold uppercase">{rec.payment_method}</strong>
+                        <span className="text-white font-mono block">{rec.sender_number}</span>
+                      </div>
+
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">পেমেন্ট TrxID:</span>
+                        <strong className="text-[#F59E0B] font-mono text-sm">{rec.trx_id}</strong>
+                      </div>
+
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">শাখা ও আবেদন সময়:</span>
+                        <span className="text-emerald-400 font-bold capitalize block">{rec.branch}</span>
+                        <span className="text-[10px] text-slate-400">{new Date(rec.created_at).toLocaleDateString("bn-BD")}</span>
+                      </div>
+                    </div>
+
+                    {/* Payment Screenshot Thumbnail & Admin Notes */}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                      {rec.payment_screenshot ? (
+                        <div className="flex items-center gap-3">
+                          <span className="text-slate-400 font-bold text-[11px]">পেমেন্ট রসিদ:</span>
+                          <div
+                            onClick={() => window.open(rec.payment_screenshot, "_blank")}
+                            className="w-14 h-14 rounded-xl border border-white/20 overflow-hidden cursor-pointer hover:opacity-80 transition-opacity bg-black shrink-0 relative"
+                            title="বড় করে দেখতে ক্লিক করুন"
+                          >
+                            <img src={rec.payment_screenshot} alt="Trx Receipt" className="w-full h-full object-cover" />
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-slate-500 text-[11px]">পেমেন্ট রসিদ আপলোড করা হয়নি</span>
+                      )}
+
+                      {rec.admin_note && (
+                        <div className="p-3 bg-[#07182E] rounded-xl border border-white/10 text-[11px] text-slate-300 flex-1 max-w-xl">
+                          💡 <strong>অ্যাডমিন নোট/নির্দেশনা:</strong> {rec.admin_note}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
             </div>
           </div>
         )}
@@ -3299,6 +3567,92 @@ export default function AdminDashboard() {
                   className="w-1/2 py-3 bg-gradient-to-r from-[#F59E0B] to-[#FACC15] text-black font-black rounded-xl hover:scale-[1.01] active:scale-[0.99] transition-all shadow-lg"
                 >
                   {editingPayment ? "আপডেট করুন" : "সংরক্ষণ করুন"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* ADMIN ENROLLMENT REVIEW ACTION MODAL (REJECT OR REQUEST MODIFICATION) */}
+      {reviewModalOpen && reviewTargetRecord && reviewActionType && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-[#0D2038] border border-white/15 rounded-3xl w-full max-w-lg p-6 sm:p-7 space-y-5 shadow-2xl relative">
+            <button
+              onClick={() => {
+                setReviewModalOpen(false);
+                setReviewTargetRecord(null);
+              }}
+              className="absolute top-6 right-6 p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#F59E0B]/10 border border-[#F59E0B]/30 text-[#F59E0B] text-[11px] font-bold">
+                <span>ভর্তি রিভিউ অ্যাকশন</span>
+              </div>
+              <h3 className="text-xl font-bold text-white">
+                {reviewActionType === "rejected" ? "❌ ভর্তি আবেদন বাতিলের কারণ লিখুন" : "⚠️ তথ্য সংশোধনের নির্দেশনা লিখুন"}
+              </h3>
+              <p className="text-xs text-slate-300">
+                শিক্ষার্থী: <strong className="text-white">{reviewTargetRecord.student_name}</strong> ({reviewTargetRecord.course_title})
+              </p>
+            </div>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!reviewAdminNote.trim()) {
+                  alert("অনুগ্রহ করে কারণ বা নির্দেশনা প্রদান করুন।");
+                  return;
+                }
+                await updateEnrollmentStatusStore(reviewTargetRecord.id, reviewActionType, reviewAdminNote);
+                await logAuditAction(
+                  reviewActionType === "rejected" ? "ভর্তি আবেদন বাতিল" : "ভর্তিতে তথ্য সংশোধন চেয়ে নোটিশ",
+                  `শিক্ষার্থী ${reviewTargetRecord.student_name}-এর আবেদনের স্ট্যাটাস ${reviewActionType} করা হয়েছে। কারণ: ${reviewAdminNote}`
+                );
+                alert("স্ট্যাটাস সফলভাবে আপডেট করা হয়েছে!");
+                setReviewModalOpen(false);
+                setReviewTargetRecord(null);
+              }}
+              className="space-y-4 text-xs"
+            >
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">
+                  {reviewActionType === "rejected" ? "বাতিলের সুনির্দিষ্ট কারণ:* (শিক্ষার্থী ড্যাশবোর্ডে দেখতে পাবে)" : "সংশোধনের সুনির্দিষ্ট নির্দেশনা:* (শিক্ষার্থী তথ্য আপডেট করার ফর্ম দেখতে পাবে)"}
+                </label>
+                <textarea
+                  required
+                  rows={4}
+                  value={reviewAdminNote}
+                  onChange={(e) => setReviewAdminNote(e.target.value)}
+                  placeholder={
+                    reviewActionType === "rejected"
+                      ? "যেমন: আপনার প্রদানকৃত TrxID ম্যাচ করেনি অথবা ভুল টাকা পাঠানো হয়েছে।"
+                      : "যেমন: অনুগ্রহ করে ১২ ডিজিটের ট্রানজেকশন আইডি এবং পেমেন্ট স্ক্রিনশটের রিয়েল ছবি প্রদান করে পুনরায় জমা দিন।"
+                  }
+                  className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3.5 text-white outline-none focus:border-[#F59E0B]"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReviewModalOpen(false);
+                    setReviewTargetRecord(null);
+                  }}
+                  className="w-1/2 py-3 bg-white/5 border border-white/10 text-slate-300 hover:text-white rounded-xl font-bold"
+                >
+                  বাতিল
+                </button>
+                <button
+                  type="submit"
+                  className={`w-1/2 py-3 text-black font-black rounded-xl hover:scale-[1.01] transition-all ${
+                    reviewActionType === "rejected" ? "bg-red-500 text-white" : "bg-[#F59E0B]"
+                  }`}
+                >
+                  স্ট্যাটাস আপডেট করুন
                 </button>
               </div>
             </form>

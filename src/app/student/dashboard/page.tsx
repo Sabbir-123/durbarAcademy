@@ -4,106 +4,114 @@ import { useState, useEffect } from "react";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import DashboardHeader from "@/components/DashboardHeader";
 import { createClient } from "@/utils/supabase/client";
-import { BookOpen, Trophy, CreditCard, UserCheck, HelpCircle, ArrowRight } from "lucide-react";
+import {
+  getStoredEnrollments,
+  subscribeEnrollmentStore,
+  EnrollmentRecord,
+  fetchEnrollmentsFromDatabase,
+} from "@/utils/enrollmentStore";
+import {
+  BookOpen,
+  Trophy,
+  CreditCard,
+  UserCheck,
+  HelpCircle,
+  ArrowRight,
+  Clock,
+  AlertTriangle,
+  CheckCircle2,
+  Lock,
+  Edit,
+} from "lucide-react";
 import Link from "next/link";
 
 export default function StudentDashboard() {
   const [profile, setProfile] = useState<any>(null);
-  const [courses, setCourses] = useState<any[]>([]);
+  const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
   const [tests, setTests] = useState<any[]>([]);
-  const [payments, setPayments] = useState<any[]>([]);
   const [restricted, setRestricted] = useState<boolean>(false);
   const [appealText, setAppealText] = useState("");
   const [appealSuccess, setAppealSuccess] = useState(false);
 
   const supabase = createClient();
 
-  useEffect(() => {
-    async function loadData() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+  const loadData = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
 
-      // Get Profile details
-      const { data: prof } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .maybeSingle();
+    // Get Profile details
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .maybeSingle();
 
-      let localSaved: any = {};
-      try {
-        const raw = localStorage.getItem(`durbar_student_profile_${user.id}`);
-        if (raw) localSaved = JSON.parse(raw);
-      } catch {}
+    let localSaved: any = {};
+    try {
+      const raw = localStorage.getItem(`durbar_student_profile_${user.id}`);
+      if (raw) localSaved = JSON.parse(raw);
+    } catch {}
 
-      setProfile({
-        ...prof,
-        full_name: prof?.full_name || localSaved.full_name || "শিক্ষার্থী",
-        email: prof?.email || user.email,
-        avatar_url: prof?.avatar_url || localSaved.avatar_url || "",
-      });
+    setProfile({
+      ...prof,
+      full_name: prof?.full_name || localSaved.full_name || "শিক্ষার্থী",
+      email: prof?.email || user.email,
+      avatar_url: prof?.avatar_url || localSaved.avatar_url || "",
+    });
 
-      // Check restrictions
-      const { data: restriction } = await supabase
-        .from("account_restrictions")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("is_blocked", true)
-        .maybeSingle();
-      if (restriction) {
-        setRestricted(true);
-      }
-
-      // Fetch enrolled courses
-      const { data: enrollments } = await supabase
-        .from("enrollments")
-        .select("courses(*)")
-        .eq("student_id", user.id)
-        .eq("status", "active");
-
-      if (enrollments && enrollments.length > 0) {
-        setCourses(enrollments.map((e: any) => e.courses));
-        setTests([
-          { id: "t1", title: "পদার্থবিজ্ঞান ১ম ও ২য় পত্র ফাইনাল মক টেস্ট", time_limit_minutes: 60, total_marks: 100 },
-          { id: "t2", title: "উচ্চতর গণিত ক্যালকুলাস ও ভেক্টর স্পেশাল ড্রিল", time_limit_minutes: 45, total_marks: 50 },
-        ]);
-        setPayments([
-          { id: "p1", amount: 9500, payment_method: "bKash", transaction_reference: "BKX99882231", payment_date: "২৫ জুলাই, ২০২৬" },
-        ]);
-      } else {
-        try {
-          const rawLocalEnrolled = localStorage.getItem(`durbar_enrolled_${user.id}`);
-          if (rawLocalEnrolled) {
-            const parsed = JSON.parse(rawLocalEnrolled);
-            const list = Array.isArray(parsed) ? parsed : [];
-            setCourses(list);
-            if (list.length > 0) {
-              setTests([
-                { id: "t1", title: "পদার্থবিজ্ঞান ১ম ও ২য় পত্র ফাইনাল মক টেস্ট", time_limit_minutes: 60, total_marks: 100 },
-              ]);
-            } else {
-              setTests([]);
-              setPayments([]);
-            }
-          } else {
-            setCourses([]);
-            setTests([]);
-            setPayments([]);
-          }
-        } catch {
-          setCourses([]);
-          setTests([]);
-          setPayments([]);
-        }
-      }
+    // Check restrictions
+    const { data: restriction } = await supabase
+      .from("account_restrictions")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("is_blocked", true)
+      .maybeSingle();
+    if (restriction) {
+      setRestricted(true);
     }
+
+    // Fetch enrollments
+    await fetchEnrollmentsFromDatabase();
+    const allLocal = getStoredEnrollments();
+    const studentRecs = allLocal.filter((e) => e.student_id === user.id);
+    setEnrollments(studentRecs);
+
+    const approvedCount = studentRecs.filter(
+      (e) => e.status === "approved" || (e.status as any) === "active"
+    ).length;
+
+    if (approvedCount > 0) {
+      setTests([
+        { id: "t1", title: "পদার্থবিজ্ঞান ১ম ও ২য় পত্র ফাইনাল মক টেস্ট", time_limit_minutes: 60, total_marks: 100 },
+        { id: "t2", title: "উচ্চতর গণিত ক্যালকুলাস ও ভেক্টর স্পেশাল ড্রিল", time_limit_minutes: 45, total_marks: 50 },
+      ]);
+    } else {
+      setTests([]);
+    }
+  };
+
+  useEffect(() => {
     loadData();
+    const unsub = subscribeEnrollmentStore(() => {
+      loadData();
+    });
+    return () => unsub();
   }, []);
 
   const handleAppeal = async (e: React.FormEvent) => {
     e.preventDefault();
     setAppealSuccess(true);
   };
+
+  const approvedEnrollments = enrollments.filter(
+    (e) => e.status === "approved" || (e.status as any) === "active"
+  );
+  const pendingEnrollments = enrollments.filter((e) => e.status === "pending");
+  const actionRequiredEnrollments = enrollments.filter(
+    (e) => e.status === "modification_needed" || e.status === "rejected"
+  );
 
   return (
     <div className="min-h-screen bg-[#07182E] text-white flex">
@@ -122,11 +130,64 @@ export default function StudentDashboard() {
               স্বাগতম, {profile?.full_name || "শিক্ষার্থী"}!
             </h1>
             <p className="text-xs text-slate-300">
-              শিক্ষা, শৃঙ্খলা ও মেন্টরশিপের মাধ্যমে আপনার ভর্তি প্রিপারেশন বেগবান করুন।
+              শিক্ষা, শৃঙ্খলা ও মেন্টরশিপের মাধ্যমে আপনার ডিফেন্স অফিসার ভর্তি প্রিপারেশন বেগবান করুন।
             </p>
           </div>
           <DashboardHeader role="student" />
         </div>
+
+        {/* NOTIFICATION CENTER FOR PENDING / MODIFICATION ACTION REQUIRED */}
+        {actionRequiredEnrollments.map((record) => (
+          <div
+            key={record.id}
+            className={`border rounded-3xl p-5 sm:p-6 space-y-3 shadow-xl animate-fade-in ${
+              record.status === "modification_needed"
+                ? "bg-sky-500/10 border-sky-500/40 text-sky-200"
+                : "bg-red-500/10 border-red-500/40 text-red-200"
+            }`}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 font-black text-sm">
+                <AlertTriangle className="w-5 h-5 shrink-0" />
+                <span>
+                  {record.status === "modification_needed"
+                    ? "⚠️ ভর্তি আবেদনে তথ্য সংশোধন প্রয়োজন"
+                    : "❌ ভর্তি আবেদনটি বাতিল করা হয়েছে"}
+                </span>
+              </div>
+              <Link
+                href="/student/courses"
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-white text-black hover:bg-slate-200 transition-all shrink-0"
+              >
+                {record.status === "modification_needed" ? "তথ্য সংশোধন করুন →" : "পুনরায় আবেদন করুন →"}
+              </Link>
+            </div>
+            <p className="text-xs leading-relaxed text-slate-300">
+              কোর্স: <strong className="text-white">{record.course_title}</strong> — 
+              {record.admin_note ? ` অ্যাডমিন নির্দেশনা: "${record.admin_note}"` : " তথ্যাবলী যাঁচাই করে আপডেট জমা দিন।"}
+            </p>
+          </div>
+        ))}
+
+        {pendingEnrollments.map((record) => (
+          <div
+            key={record.id}
+            className="bg-amber-500/10 border border-amber-500/30 rounded-3xl p-5 sm:p-6 space-y-2 shadow-xl text-amber-200 animate-fade-in"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 font-black text-sm text-amber-400">
+                <Clock className="w-5 h-5 shrink-0" />
+                <span>⏳ পেমেন্ট ভেরিফিকেশন পর্যবেক্ষণাধীন রয়েছে (Pending Admin Approval)</span>
+              </div>
+              <span className="text-[11px] font-mono font-bold px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                TrxID: {record.trx_id}
+              </span>
+            </div>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              আপনার <strong className="text-white">{record.course_title}</strong> কোর্সের ভর্তি পেমেন্ট যাঁচাই করা হচ্ছে। অ্যাডমিন প্যানেল থেকে অনুমোদনের পর ২৪ ঘণ্টার মধ্যে ক্লাস এক্সেস সক্রিয় হবে।
+            </p>
+          </div>
+        ))}
 
         {/* RESTRICTION WARNING / BLOCK APPEAL */}
         {restricted && (
@@ -169,7 +230,7 @@ export default function StudentDashboard() {
             className="bg-[#0D2038] p-6 rounded-3xl border border-white/10 flex items-center justify-between hover:border-[#F59E0B]/40 transition-all group shadow-md"
           >
             <div>
-              <span className="text-2xl font-black text-[#F59E0B] block">{courses.length} টি</span>
+              <span className="text-2xl font-black text-[#F59E0B] block">{enrollments.length} টি</span>
               <span className="text-xs text-slate-300 group-hover:text-white transition-colors font-bold mt-1 block">
                 আমার কোর্সসমূহ →
               </span>
@@ -215,7 +276,7 @@ export default function StudentDashboard() {
           <div className="flex items-center justify-between border-b border-white/10 pb-3">
             <h2 className="text-lg font-bold text-white flex items-center gap-2">
               <BookOpen className="w-5 h-5 text-[#F59E0B]" />
-              <span>আমার সক্রিয় কোর্সসমূহ ({courses.length}টি)</span>
+              <span>আমার কোর্সসমূহ ({enrollments.length}টি)</span>
             </h2>
             <Link
               href="/student/courses"
@@ -226,53 +287,78 @@ export default function StudentDashboard() {
             </Link>
           </div>
 
-          {courses.length > 0 ? (
+          {enrollments.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {courses.slice(0, 2).map((course) => (
-                <div
-                  key={course.id}
-                  className="bg-[#0D2038] border border-white/10 rounded-3xl p-6 flex flex-col justify-between hover:border-[#F59E0B]/30 transition-all shadow-lg"
-                >
-                  <div className="space-y-4">
-                    <div>
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <h3 className="text-lg font-bold text-white leading-snug">{course.title}</h3>
-                        <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
-                          {course.courseMode === "online"
-                            ? "🌐 অনলাইন"
-                            : course.courseMode === "offline"
-                            ? "🏫 অফলাইন"
-                            : "🌐 অনলাইন ও 🏫 অফলাইন"}
-                        </span>
+              {enrollments.slice(0, 2).map((record) => {
+                const isApproved = record.status === "approved" || (record.status as any) === "active";
+                const isPending = record.status === "pending";
+
+                return (
+                  <div
+                    key={record.id}
+                    className="bg-[#0D2038] border border-white/10 rounded-3xl p-6 flex flex-col justify-between hover:border-[#F59E0B]/30 transition-all shadow-lg"
+                  >
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <h3 className="text-lg font-bold text-white leading-snug">{record.course_title}</h3>
+                          <span
+                            className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full capitalize shrink-0 ${
+                              isApproved
+                                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                                : isPending
+                                ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                                : "bg-red-500/20 text-red-300 border border-red-500/30"
+                            }`}
+                          >
+                            {isApproved
+                              ? "✅ ভর্তি অনুমোদিত"
+                              : isPending
+                              ? "⏳ পেমেন্ট যাঁচাইাধীন"
+                              : "❌ আবেদন বাতিল/সংশোধন"}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-400 mt-1">
+                          পেমেন্ট নম্বর: <strong className="font-mono text-white">{record.sender_number}</strong> • TrxID: <strong className="font-mono text-[#F59E0B]">{record.trx_id}</strong>
+                        </p>
                       </div>
-                      <p className="text-xs text-slate-400 mt-1">{course.tagline}</p>
+
+                      {/* Progress bar */}
+                      <div className="space-y-1.5 pt-2">
+                        <div className="flex justify-between text-[11px] font-bold">
+                          <span className="text-slate-300">কোর্স লাইভ অগ্রগতি</span>
+                          <span className="text-emerald-400">{isApproved ? "100%" : "0% (অপেক্ষমান)"}</span>
+                        </div>
+                        <div className="w-full h-2 bg-[#07182E] rounded-full overflow-hidden p-0.5 border border-white/5">
+                          <div
+                            className={`h-full rounded-full ${
+                              isApproved ? "bg-gradient-to-r from-[#F59E0B] to-emerald-400 w-full" : "bg-amber-500/30 w-1/12"
+                            }`}
+                          />
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Progress bar */}
-                    <div className="space-y-1.5 pt-2">
-                      <div className="flex justify-between text-[11px] font-bold">
-                        <span className="text-slate-300">কোর্স অগ্রগতি</span>
-                        <span className="text-emerald-400">{course.progress || 0}% সম্পন্ন</span>
-                      </div>
-                      <div className="w-full h-2 bg-[#07182E] rounded-full overflow-hidden p-0.5 border border-white/5">
-                        <div
-                          className="h-full bg-gradient-to-r from-[#F59E0B] to-emerald-400 rounded-full"
-                          style={{ width: `${course.progress || 0}%` }}
-                        />
-                      </div>
+                    <div className="pt-6 mt-6 border-t border-white/5 flex justify-end">
+                      {isApproved ? (
+                        <Link
+                          href={`/student/courses/${record.course_id}`}
+                          className="px-5 py-2.5 text-xs font-extrabold text-black bg-[#F59E0B] hover:bg-[#FACC15] rounded-xl transition-all"
+                        >
+                          ক্লাসে প্রবেশ করুন
+                        </Link>
+                      ) : (
+                        <Link
+                          href="/student/courses"
+                          className="px-5 py-2.5 text-xs font-bold text-slate-300 bg-white/5 rounded-xl border border-white/10 hover:text-white"
+                        >
+                          বিস্তারিত স্ট্যাটাস দেখুন →
+                        </Link>
+                      )}
                     </div>
                   </div>
-
-                  <div className="pt-6 mt-6 border-t border-white/5 flex justify-end">
-                    <Link
-                      href={`/student/courses/${course.id}`}
-                      className="px-5 py-2.5 text-xs font-bold text-black bg-[#F59E0B] rounded-xl hover:bg-[#FACC15]"
-                    >
-                      ক্লাসে প্রবেশ করুন
-                    </Link>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="bg-[#0D2038] border border-white/10 rounded-3xl p-8 text-center space-y-4">
@@ -292,62 +378,88 @@ export default function StudentDashboard() {
         </section>
 
         {/* CBT Tests Section */}
-        <section className="bg-[#0D2038] border border-white/10 rounded-3xl p-6 space-y-4">
-          <h3 className="text-base font-bold text-white flex items-center gap-2">
-            <Trophy className="w-5 h-5 text-[#F59E0B]" />
-            <span>আইএসএসবি ও একাডেমি মক টেস্ট</span>
-          </h3>
+        {tests.length > 0 && (
+          <section className="bg-[#0D2038] border border-white/10 rounded-3xl p-6 space-y-4">
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-[#F59E0B]" />
+              <span>আইএসএসবি ও একাডেমি মক টেস্ট</span>
+            </h3>
 
-          <div className="space-y-3">
-            {tests.map((test) => (
-              <div
-                key={test.id}
-                className="bg-[#07182E] p-4 rounded-2xl border border-white/5 flex items-center justify-between gap-4 text-xs"
-              >
-                <div>
-                  <span className="font-bold text-white block mb-0.5">{test.title}</span>
-                  <span className="text-slate-400 block">• সময়সীমা: {test.time_limit_minutes} মিনিট | পূর্ণমান: {test.total_marks}</span>
-                </div>
-                <Link
-                  href={`/student/tests/${test.id}`}
-                  className="px-4 py-2 text-xs font-bold text-black bg-[#FACC15] rounded-xl hover:scale-105 transition-transform"
+            <div className="space-y-3">
+              {tests.map((test) => (
+                <div
+                  key={test.id}
+                  className="bg-[#07182E] p-4 rounded-2xl border border-white/5 flex items-center justify-between gap-4 text-xs"
                 >
-                  অংশ নিন
-                </Link>
-              </div>
-            ))}
-          </div>
-        </section>
+                  <div>
+                    <span className="font-bold text-white block mb-0.5">{test.title}</span>
+                    <span className="text-slate-400 block">• সময়সীমা: {test.time_limit_minutes} মিনিট | পূর্ণমান: {test.total_marks}</span>
+                  </div>
+                  <Link
+                    href={`/student/tests/${test.id}`}
+                    className="px-4 py-2 text-xs font-bold text-black bg-[#FACC15] rounded-xl hover:scale-105 transition-transform"
+                  >
+                    অংশ নিন
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Transaction History Log */}
-        <section className="bg-[#0D2038] border border-white/10 rounded-3xl p-6 space-y-4">
-          <h3 className="text-base font-bold text-white flex items-center gap-2">
-            <CreditCard className="w-5 h-5 text-emerald-400" />
-            <span>ভর্তি পেমেন্ট ও রসিদ লগ</span>
-          </h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-slate-300">
-              <thead>
-                <tr className="border-b border-white/10 pb-2 text-left">
-                  <th className="pb-2">তারিখ</th>
-                  <th className="pb-2">লেনদেন রেফারেন্স</th>
-                  <th className="pb-2">পদ্ধতি</th>
-                  <th className="pb-2 text-right">পরিমাণ</th>
-                </tr>
-              </thead>
-              <tbody>
-                {payments.map((p) => (
-                  <tr key={p.id} className="border-b border-white/5 last:border-0">
-                    <td className="py-2.5">{p.payment_date}</td>
-                    <td className="py-2.5 font-mono">{p.transaction_reference}</td>
-                    <td className="py-2.5">{p.payment_method}</td>
-                    <td className="py-2.5 text-right font-bold text-white">৳{p.amount.toLocaleString("bn-BD")}</td>
+        {enrollments.length > 0 && (
+          <section className="bg-[#0D2038] border border-white/10 rounded-3xl p-6 space-y-4">
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <CreditCard className="w-5 h-5 text-emerald-400" />
+              <span>ভর্তি পেমেন্ট ও রসিদ খতিয়ান</span>
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-slate-300">
+                <thead>
+                  <tr className="border-b border-white/10 pb-2 text-left">
+                    <th className="pb-2">তারিখ</th>
+                    <th className="pb-2">কোর্স</th>
+                    <th className="pb-2">প্রেরক নম্বর & TrxID</th>
+                    <th className="pb-2">পদ্ধতি</th>
+                    <th className="pb-2 text-right">স্ট্যাটাস</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+                </thead>
+                <tbody>
+                  {enrollments.map((p) => (
+                    <tr key={p.id} className="border-b border-white/5 last:border-0">
+                      <td className="py-2.5">{new Date(p.created_at).toLocaleDateString("bn-BD")}</td>
+                      <td className="py-2.5 font-bold text-white">{p.course_title}</td>
+                      <td className="py-2.5 font-mono">{p.sender_number} ({p.trx_id})</td>
+                      <td className="py-2.5 uppercase">{p.payment_method}</td>
+                      <td className="py-2.5 text-right font-bold">
+                        <span
+                          className={`px-2.5 py-0.5 rounded-full text-[10px] ${
+                            p.status === "approved" || (p.status as any) === "active"
+                              ? "bg-emerald-500/20 text-emerald-300"
+                              : p.status === "rejected"
+                              ? "bg-red-500/20 text-red-300"
+                              : p.status === "modification_needed"
+                              ? "bg-sky-500/20 text-sky-300"
+                              : "bg-amber-500/20 text-amber-300"
+                          }`}
+                        >
+                          {p.status === "approved" || (p.status as any) === "active"
+                            ? "অনুমোদিত"
+                            : p.status === "rejected"
+                            ? "বাতিল"
+                            : p.status === "modification_needed"
+                            ? "সংশোধন প্রয়োজন"
+                            : "অপেক্ষমান"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
       </main>
     </div>
   );

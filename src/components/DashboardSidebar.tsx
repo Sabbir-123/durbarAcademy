@@ -17,6 +17,7 @@ import {
   Video,
   CreditCard,
   Compass,
+  CheckCircle2,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -55,6 +56,7 @@ export default function DashboardSidebar({ role, activeTab, onTabChange, userNam
     ],
     admin: [
       { id: "dashboard", label: "ড্যাশবোর্ড (Overview)", icon: LayoutDashboard, href: "/admin/dashboard#dashboard" },
+      { id: "enrollments", label: "ভর্তি আবেদন যাচাই", icon: CheckCircle2, href: "/admin/dashboard#enrollments" },
       { id: "users", label: "ইউজার রুল ম্যানেজমেন্ট", icon: UserCheck, href: "/admin/dashboard#users" },
       { id: "courses", label: "কোর্সসমূহ পরিচালনা", icon: BookOpen, href: "/admin/dashboard#courses" },
       { id: "stories", label: "সাকসেস স্টোরি", icon: Trophy, href: "/admin/dashboard#stories" },
