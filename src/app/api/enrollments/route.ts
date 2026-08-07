@@ -10,12 +10,23 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 const DB_FILE_PATH = path.join(process.cwd(), "src", "data", "db_enrollments.json");
 
+const BLACKLISTED_TRX_IDS = new Set([
+  "ytertcch",
+  "9jas#21l",
+  "192124h10",
+  "9999999",
+]);
+
 function readDiskEnrollments(): any[] {
   try {
     if (fs.existsSync(DB_FILE_PATH)) {
       const raw = fs.readFileSync(DB_FILE_PATH, "utf-8");
       const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
+      if (Array.isArray(parsed)) {
+        return parsed.filter(
+          (e: any) => !e.trx_id || !BLACKLISTED_TRX_IDS.has(e.trx_id.trim().toLowerCase())
+        );
+      }
     }
   } catch (err) {
     console.warn("Error reading db_enrollments.json:", err);
@@ -74,9 +85,11 @@ export async function GET() {
       });
     });
 
-    const combinedList = Array.from(mergedMap.values()).sort(
-      (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
+    const combinedList = Array.from(mergedMap.values())
+      .filter((r: any) => !r.trx_id || !BLACKLISTED_TRX_IDS.has(r.trx_id.trim().toLowerCase()))
+      .sort(
+        (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
 
     writeDiskEnrollments(combinedList);
 

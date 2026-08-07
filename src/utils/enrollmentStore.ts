@@ -20,8 +20,14 @@ export interface EnrollmentRecord {
 }
 
 const STORAGE_KEY = "durbar_enrollment_requests_v1";
-
 const DEFAULT_RECORDS: EnrollmentRecord[] = [];
+
+const BLACKLISTED_TRX_IDS = new Set([
+  "ytertcch",
+  "9jas#21l",
+  "192124h10",
+  "9999999",
+]);
 
 export function getStoredEnrollments(): EnrollmentRecord[] {
   if (typeof window === "undefined") return DEFAULT_RECORDS;
@@ -29,7 +35,19 @@ export function getStoredEnrollments(): EnrollmentRecord[] {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_RECORDS;
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : DEFAULT_RECORDS;
+    if (!Array.isArray(parsed)) return DEFAULT_RECORDS;
+
+    const cleanList = parsed.filter(
+      (e) => !e.trx_id || !BLACKLISTED_TRX_IDS.has(e.trx_id.trim().toLowerCase())
+    );
+
+    if (cleanList.length !== parsed.length) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(cleanList));
+      } catch (e) {}
+    }
+
+    return cleanList;
   } catch {
     return DEFAULT_RECORDS;
   }
@@ -107,28 +125,17 @@ export async function clearAllEnrollmentRequestsStore(): Promise<EnrollmentRecor
 }
 
 export async function fetchEnrollmentsFromDatabase(): Promise<EnrollmentRecord[]> {
-  const localItems = getStoredEnrollments();
-
-  if (typeof window === "undefined") return localItems;
+  if (typeof window === "undefined") return getStoredEnrollments();
 
   try {
-    // 1. Sync local items to server API first
-    for (const item of localItems) {
-      try {
-        await fetch("/api/enrollments", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(item),
-        });
-      } catch (err) {}
-    }
-
-    // 2. Fetch all combined enrollments from server API
+    // Fetch all combined enrollments from server API route
     const res = await fetch("/api/enrollments", { cache: "no-store" });
     if (res.ok) {
       const data = await res.json();
       if (data.success && Array.isArray(data.enrollments)) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data.enrollments));
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(data.enrollments));
+        } catch (e) {}
         return data.enrollments;
       }
     }
