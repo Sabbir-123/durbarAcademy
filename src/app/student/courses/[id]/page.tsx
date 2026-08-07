@@ -77,31 +77,88 @@ export default function StudentCoursePlayer({ params }: { params: Promise<{ id: 
     const pool = [...allCourses, ...localCourses];
 
     const matched =
-      pool.find((c) => c.id === courseIdFromRoute || (c as any).slug === courseIdFromRoute) ||
+      pool.find(
+        (c) =>
+          c.id === courseIdFromRoute ||
+          (c as any).slug === courseIdFromRoute ||
+          (c.title && c.title.trim().toLowerCase() === courseIdFromRoute.trim().toLowerCase())
+      ) ||
       pool[0] ||
       null;
 
     setCourse(matched);
 
     const targetCourseId = matched?.id || courseIdFromRoute;
+    const targetCourseTitle = matched?.title || "";
 
-    // 2. Load classes uploaded from Teacher Panel via classStore
-    let teacherBatches = getBatches(targetCourseId);
+    // 2. Load batches uploaded from Teacher Panel via classStore
+    const allBatches = getBatches();
+    let teacherBatches = allBatches.filter((b) => {
+      if (!b.courseId) return true; // General unassigned batch
+      if (b.courseId === targetCourseId || b.courseId === courseIdFromRoute) return true;
+      if (matched && (matched as any).slug && b.courseId === (matched as any).slug) return true;
+      if (targetCourseTitle && b.courseId.trim().toLowerCase() === targetCourseTitle.trim().toLowerCase()) return true;
+      return false;
+    });
+
     if (teacherBatches.length === 0) {
-      teacherBatches = getBatches(); // fallback to all batches if not course-specific
+      teacherBatches = allBatches;
     }
 
     const structuredSyllabus: DynamicMilestone[] = [];
 
     if (teacherBatches.length > 0) {
       teacherBatches.forEach((batch) => {
-        const batchMilestones = getMilestones(batch.id);
+        let batchMilestones = getMilestones(batch.id);
+
+        // Fallback: If no milestones exist for batch, construct a default milestone for the batch
+        if (batchMilestones.length === 0) {
+          batchMilestones = [
+            {
+              id: `virtual-m-${batch.id}`,
+              batchId: batch.id,
+              title: `${batch.title} — সিলেবাস ও মূল পাঠদান`,
+              description: batch.description || "",
+              order: 1,
+              createdAt: batch.createdAt || new Date().toISOString(),
+            },
+          ];
+        }
+
         batchMilestones.forEach((m) => {
-          const mModules = getModules(m.id);
+          let mModules = getModules(m.id);
+
+          // Fallback: If no modules exist for milestone, check for modules belonging to batch or construct a default module
+          if (mModules.length === 0) {
+            const batchMods = getModules().filter((mod) => mod.batchId === batch.id);
+            if (batchMods.length > 0) {
+              mModules = batchMods;
+            } else {
+              mModules = [
+                {
+                  id: `virtual-mod-${m.id}`,
+                  milestoneId: m.id,
+                  batchId: batch.id,
+                  title: `${m.title} — লেকচার মডিউল`,
+                  description: "",
+                  order: 1,
+                  createdAt: new Date().toISOString(),
+                },
+              ];
+            }
+          }
+
           const dynamicMods: DynamicModule[] = [];
 
           mModules.forEach((mod) => {
-            const modClasses = getClasses(mod.id);
+            let modClasses = getClasses(mod.id);
+
+            // Fallback: If no classes match mod.id, check if classes exist for milestone or batch
+            if (modClasses.length === 0) {
+              const allC = getClasses();
+              modClasses = allC.filter((c) => c.milestoneId === m.id || c.batchId === batch.id);
+            }
+
             const dynamicLessons: DynamicLesson[] = modClasses.map((c) => ({
               id: c.id,
               title: c.title,
@@ -112,28 +169,27 @@ export default function StudentCoursePlayer({ params }: { params: Promise<{ id: 
               tests: c.tests || [],
             }));
 
-            if (dynamicLessons.length > 0) {
-              dynamicMods.push({
-                id: mod.id,
-                title: mod.title,
-                lessons: dynamicLessons,
-              });
-            }
+            dynamicMods.push({
+              id: mod.id,
+              title: mod.title,
+              lessons: dynamicLessons,
+            });
           });
 
-          if (dynamicMods.length > 0) {
-            structuredSyllabus.push({
-              id: m.id,
-              milestone: `${m.title} (${batch.title})`,
-              modules: dynamicMods,
-            });
-          }
+          structuredSyllabus.push({
+            id: m.id,
+            milestone: `${m.title} (${batch.title})`,
+            modules: dynamicMods,
+          });
         });
       });
     }
 
-    // 3. Fallback default orientation syllabus if teacher hasn't added custom classes yet
-    if (structuredSyllabus.length === 0) {
+    // 3. Fallback default orientation syllabus ONLY if no teacher content exists
+    if (
+      structuredSyllabus.length === 0 ||
+      !structuredSyllabus.some((m) => m.modules.some((mod) => mod.lessons.length > 0))
+    ) {
       const courseTitle = matched?.title || "ডিফেন্স অফিসারি ক্যাডেট স্পেশাল কোর্স";
       structuredSyllabus.push({
         id: "default-m1",
@@ -175,15 +231,23 @@ export default function StudentCoursePlayer({ params }: { params: Promise<{ id: 
 
     setSyllabus(structuredSyllabus);
 
-    // Pick initial active video
-    if (structuredSyllabus.length > 0) {
-      const firstLesson = structuredSyllabus[0]?.modules[0]?.lessons[0];
-      if (firstLesson) {
-        setActiveVideo(firstLesson.video);
-        setActiveLessonTitle(firstLesson.title);
-        setActiveLessonDescription(firstLesson.description || "");
-        setActiveLessonTests(firstLesson.tests || []);
+    // Pick first available lesson video
+    let firstVideoFound = false;
+    for (const m of structuredSyllabus) {
+      for (const mod of m.modules) {
+        for (const lesson of mod.lessons) {
+          if (lesson.video) {
+            setActiveVideo(lesson.video);
+            setActiveLessonTitle(lesson.title);
+            setActiveLessonDescription(lesson.description || "");
+            setActiveLessonTests(lesson.tests || []);
+            firstVideoFound = true;
+            break;
+          }
+        }
+        if (firstVideoFound) break;
       }
+      if (firstVideoFound) break;
     }
   };
 
