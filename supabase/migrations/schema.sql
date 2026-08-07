@@ -615,6 +615,14 @@ BEGIN
 END $$;
 
 -- ALTER ENROLLMENTS TABLE FOR CHECKOUT & ADMIN REVIEW FIELDS
+ALTER TABLE public.enrollments DROP CONSTRAINT IF EXISTS enrollments_student_id_fkey;
+ALTER TABLE public.enrollments DROP CONSTRAINT IF EXISTS enrollments_course_id_fkey;
+ALTER TABLE public.enrollments ALTER COLUMN id TYPE TEXT;
+ALTER TABLE public.enrollments ALTER COLUMN student_id TYPE TEXT;
+ALTER TABLE public.enrollments ALTER COLUMN course_id TYPE TEXT;
+ALTER TABLE public.enrollments ALTER COLUMN student_id DROP NOT NULL;
+ALTER TABLE public.enrollments ALTER COLUMN course_id DROP NOT NULL;
+
 ALTER TABLE public.enrollments ADD COLUMN IF NOT EXISTS trx_id TEXT;
 ALTER TABLE public.enrollments ADD COLUMN IF NOT EXISTS sender_number TEXT;
 ALTER TABLE public.enrollments ADD COLUMN IF NOT EXISTS payment_method TEXT;

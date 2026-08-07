@@ -25,7 +25,7 @@ const STORAGE_KEY = "durbar_enrollment_requests_v1";
 
 const DEFAULT_RECORDS: EnrollmentRecord[] = [];
 
-/** Helper to convert arbitrary string IDs (e.g. "ENR-1234", "guest-5678") to valid UUID format for PostgreSQL */
+/** Helper to convert arbitrary string IDs to valid UUID format if PostgreSQL column requires UUID */
 export function toValidUUID(str: string): string {
   if (!str) return "00000000-0000-4000-8000-000000000001";
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -49,7 +49,7 @@ export function getStoredEnrollments(): EnrollmentRecord[] {
 export function saveEnrollmentStore(record: EnrollmentRecord): EnrollmentRecord[] {
   const current = getStoredEnrollments();
   const existingIdx = current.findIndex(
-    (e) => e.id === record.id || (e.student_id === record.student_id && e.course_id === record.course_id)
+    (e) => e.id === record.id || (e.trx_id && e.trx_id === record.trx_id) || (e.student_id === record.student_id && e.course_id === record.course_id)
   );
 
   let updated: EnrollmentRecord[];
@@ -67,12 +67,78 @@ export function saveEnrollmentStore(record: EnrollmentRecord): EnrollmentRecord[
   return updated;
 }
 
-export async function fetchEnrollmentsFromDatabase(): Promise<EnrollmentRecord[]> {
-  if (typeof window === "undefined") return getStoredEnrollments();
+/** Push single enrollment record to Supabase with dual UUID/Text fallback */
+async function pushRecordToSupabase(record: EnrollmentRecord) {
   try {
     const supabase = createClient();
+    const now = record.updated_at || new Date().toISOString();
 
-    // Select directly from enrollments table without fragile joins that break on FK mismatch
+    const payload: any = {
+      id: record.id,
+      student_id: record.student_id || "",
+      course_id: record.course_id || "",
+      status: record.status || "pending",
+      trx_id: record.trx_id || "",
+      sender_number: record.sender_number || "",
+      payment_method: record.payment_method || "bKash",
+      payment_screenshot: record.payment_screenshot || "",
+      student_name: record.student_name || "শিক্ষার্থী",
+      student_phone: record.student_phone || "",
+      branch: record.branch || "online",
+      college: record.college || "",
+      course_title: record.course_title || "",
+      course_price: record.course_price || 8500,
+      student_email: record.student_email || "",
+      admin_note: record.admin_note || "",
+      updated_at: now,
+    };
+
+    // Attempt 1: Insert using exact text string ID
+    const { error: err1 } = await supabase.from("enrollments").upsert(payload);
+
+    if (err1) {
+      // Attempt 2: Insert using valid UUID formatting if PostgreSQL column enforces UUID
+      const uuidPayload = {
+        ...payload,
+        id: toValidUUID(record.id),
+        student_id: toValidUUID(record.student_id),
+        course_id: toValidUUID(record.course_id),
+      };
+      const { error: err2 } = await supabase.from("enrollments").upsert(uuidPayload);
+
+      if (err2) {
+        // Attempt 3: Insert without UUID constraints
+        await supabase.from("enrollments").upsert({
+          ...payload,
+          id: toValidUUID(record.id),
+          student_id: null,
+          course_id: null,
+        });
+      }
+    }
+  } catch (err) {
+    console.warn("pushRecordToSupabase warning:", err);
+  }
+}
+
+/** Synchronize all locally stored enrollments to Supabase DB */
+export async function syncLocalEnrollmentsToSupabase() {
+  const localList = getStoredEnrollments();
+  if (localList.length === 0) return;
+
+  for (const rec of localList) {
+    await pushRecordToSupabase(rec);
+  }
+}
+
+export async function fetchEnrollmentsFromDatabase(): Promise<EnrollmentRecord[]> {
+  if (typeof window === "undefined") return getStoredEnrollments();
+
+  // 1. First, push any local client submissions to Supabase
+  await syncLocalEnrollmentsToSupabase();
+
+  try {
+    const supabase = createClient();
     const { data, error } = await supabase
       .from("enrollments")
       .select("*")
@@ -111,7 +177,7 @@ export async function fetchEnrollmentsFromDatabase(): Promise<EnrollmentRecord[]
     for (const rec of dbRecords) {
       saveEnrollmentStore(rec);
     }
-    return dbRecords;
+    return getStoredEnrollments();
   } catch (err) {
     console.warn("fetchEnrollmentsFromDatabase exception:", err);
     return getStoredEnrollments();
@@ -122,7 +188,6 @@ export async function submitEnrollmentRequest(
   record: Omit<EnrollmentRecord, "id" | "created_at" | "status"> & { id?: string }
 ): Promise<EnrollmentRecord> {
   const rawId = record.id || `ENR-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
-  const validDbId = toValidUUID(rawId);
   const now = new Date().toISOString();
 
   const supabase = createClient();
@@ -137,9 +202,6 @@ export async function submitEnrollmentRequest(
     }
   } catch {}
 
-  const validStudentUUID = toValidUUID(authenticatedStudentId);
-  const validCourseUUID = toValidUUID(record.course_id);
-
   const newRecord: EnrollmentRecord = {
     ...record,
     id: rawId,
@@ -149,46 +211,11 @@ export async function submitEnrollmentRequest(
     updated_at: now,
   };
 
-  // 1. Save to local storage store for instant client update
+  // 1. Save locally for instant rendering on client
   saveEnrollmentStore(newRecord);
 
-  // 2. Persist to Supabase database so Admin Panel receives it instantly!
-  try {
-    const payload: any = {
-      id: validDbId,
-      student_id: validStudentUUID,
-      course_id: validCourseUUID,
-      status: "pending",
-      trx_id: newRecord.trx_id,
-      sender_number: newRecord.sender_number,
-      payment_method: newRecord.payment_method,
-      payment_screenshot: newRecord.payment_screenshot || "",
-      student_name: newRecord.student_name,
-      student_phone: newRecord.student_phone,
-      branch: newRecord.branch,
-      college: newRecord.college || "",
-      course_title: newRecord.course_title,
-      course_price: newRecord.course_price || 8500,
-      student_email: newRecord.student_email || "",
-      updated_at: now,
-    };
-
-    const { error: upsertErr } = await supabase
-      .from("enrollments")
-      .upsert(payload);
-
-    if (upsertErr) {
-      console.warn("Supabase upsert with FK error, attempting fallback without foreign keys:", upsertErr);
-      // Fallback: insert with null course_id & student_id if foreign key constraints failed
-      await supabase.from("enrollments").upsert({
-        ...payload,
-        student_id: null,
-        course_id: null,
-      });
-    }
-  } catch (err) {
-    console.warn("Supabase enrollments submit exception:", err);
-  }
+  // 2. Push to Supabase database so Admin Panel receives it instantly!
+  await pushRecordToSupabase(newRecord);
 
   return newRecord;
 }
@@ -261,7 +288,7 @@ export async function resubmitEnrollmentRequestStore(
       const supabase = createClient();
       const validDbId = toValidUUID(enrollmentId);
 
-      await supabase
+      const { error } = await supabase
         .from("enrollments")
         .update({
           status: "pending",
@@ -277,6 +304,10 @@ export async function resubmitEnrollmentRequestStore(
           updated_at: now,
         })
         .or(`id.eq.${enrollmentId},id.eq.${validDbId}`);
+
+      if (error) {
+        await pushRecordToSupabase(updatedRecord);
+      }
     } catch (err) {
       console.warn("Supabase resubmission exception:", err);
     }
