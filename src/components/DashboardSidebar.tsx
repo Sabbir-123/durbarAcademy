@@ -39,7 +39,6 @@ export default function DashboardSidebar({ role, activeTab, onTabChange, userNam
       { id: "dashboard", label: "ড্যাশবোর্ড", icon: LayoutDashboard, href: "/student/dashboard" },
       { id: "courses", label: "আমার কোর্সসমূহ", icon: BookOpen, href: "/student/courses" },
       { id: "profile", label: "আমার প্রোফাইল", icon: UserCheck, href: "/student/profile" },
-      { id: "tickets", label: "সহায়তা টিকিট", icon: HelpCircle, href: "/student/tickets" },
     ],
     teacher: [
       { id: "dashboard", label: "ইনস্ট্রাক্টর ড্যাশবোর্ড", icon: LayoutDashboard, href: "/teacher/dashboard" },

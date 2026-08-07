@@ -195,7 +195,7 @@ export default function StudentDashboard() {
           </Link>
 
           <Link
-            href="/student/tickets"
+            href="/student/courses#tickets"
             className="bg-[#0D2038] p-6 rounded-3xl border border-white/10 flex items-center justify-between hover:border-sky-400/40 transition-all group shadow-md"
           >
             <div>
