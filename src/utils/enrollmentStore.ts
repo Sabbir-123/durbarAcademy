@@ -50,7 +50,20 @@ export function saveEnrollmentStore(record: EnrollmentRecord): EnrollmentRecord[
   }
 
   if (typeof window !== "undefined") {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    } catch (err) {
+      console.warn("localStorage quota exceeded, saving lightweight metadata without heavy images:", err);
+      try {
+        const lightweightList = updated.map((r) => ({
+          ...r,
+          payment_screenshot: r.payment_screenshot && r.payment_screenshot.length > 200 ? "" : r.payment_screenshot,
+        }));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(lightweightList));
+      } catch (innerErr) {
+        console.warn("Could not write to localStorage:", innerErr);
+      }
+    }
     window.dispatchEvent(new Event("durbar_enrollments_updated"));
   }
   return updated;

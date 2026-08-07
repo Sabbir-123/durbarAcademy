@@ -201,16 +201,45 @@ export default function RegistrationModal({ initialCourseId, onClose }: Registra
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      alert("পেমেন্ট রসিদ ফাইলের সাইজ সর্বোচ্চ ৫ মেগাবাইট (5MB) হতে পারবে।");
+    if (file.size > 10 * 1024 * 1024) {
+      alert("পেমেন্ট রসিদ ফাইলের সাইজ সর্বোচ্চ ১০ মেগাবাইট (10MB) হতে পারবে।");
       return;
     }
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      if (event.target?.result) {
-        setPaymentScreenshot(event.target.result as string);
-      }
+      const src = event.target?.result as string;
+      if (!src) return;
+
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const maxDim = 800;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressed = canvas.toDataURL("image/jpeg", 0.75);
+          setPaymentScreenshot(compressed);
+        } else {
+          setPaymentScreenshot(src);
+        }
+      };
+      img.src = src;
     };
     reader.readAsDataURL(file);
   };
