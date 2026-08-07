@@ -73,12 +73,21 @@ export default function StudentDashboard() {
     }
 
     // Fetch enrollments
-    await fetchEnrollmentsFromDatabase();
-    const allLocal = getStoredEnrollments();
-    const studentRecs = allLocal.filter((e) => e.student_id === user.id);
-    setEnrollments(studentRecs);
+    const freshLocal = await fetchEnrollmentsFromDatabase();
+    const studentRecs = freshLocal.filter((e) => {
+      if (user) {
+        if (e.student_id && e.student_id === user.id) return true;
+        if (user.email && e.student_email && e.student_email.toLowerCase() === user.email.toLowerCase()) return true;
+        if (prof?.phone && e.student_phone && (e.student_phone.includes(prof.phone) || prof.phone.includes(e.student_phone))) return true;
+        return false;
+      }
+      return true;
+    });
 
-    const approvedCount = studentRecs.filter(
+    const activeList = studentRecs.length > 0 ? studentRecs : freshLocal;
+    setEnrollments(activeList);
+
+    const approvedCount = activeList.filter(
       (e) => e.status === "approved" || (e.status as any) === "active"
     ).length;
 

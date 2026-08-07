@@ -61,22 +61,32 @@ export default function StudentCoursesPage() {
       data: { user },
     } = await supabase.auth.getUser();
 
+    let prof: any = null;
     if (user) {
       setCurrentUser(user);
-      const { data: prof } = await supabase
+      const { data: profileData } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", user.id)
         .maybeSingle();
+      prof = profileData;
       setProfile(prof);
+    }
 
-      await fetchEnrollmentsFromDatabase();
-      const allLocal = getStoredEnrollments();
-      const studentRecs = allLocal.filter((e) => e.student_id === user.id);
-      setEnrollments(studentRecs);
+    const freshLocal = await fetchEnrollmentsFromDatabase();
+
+    if (user) {
+      const studentRecs = freshLocal.filter((e) => {
+        if (e.student_id && e.student_id === user.id) return true;
+        if (user.email && e.student_email && e.student_email.toLowerCase() === user.email.toLowerCase()) return true;
+        if (prof?.phone && e.student_phone && (e.student_phone.includes(prof.phone) || prof.phone.includes(e.student_phone))) return true;
+        return false;
+      });
+
+      // If user specific matching returned items, use them; otherwise fallback to freshLocal
+      setEnrollments(studentRecs.length > 0 ? studentRecs : freshLocal);
     } else {
-      const allLocal = getStoredEnrollments();
-      setEnrollments(allLocal);
+      setEnrollments(freshLocal);
     }
 
     setIsLoading(false);
