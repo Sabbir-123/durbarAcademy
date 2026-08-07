@@ -1405,8 +1405,11 @@ export default function AdminDashboard() {
                         <button
                           onClick={async () => {
                             if (confirm(`আপনি কি ${rec.student_name}-এর ${rec.course_title} কোর্সে ভর্তি অনুমোদন করতে চান?`)) {
-                              await updateEnrollmentStatusStore(rec.id, "approved", "অ্যাডমিন কর্তৃক ভর্তি অনুমোদন সম্পন্ন হয়েছে।");
+                              const updatedList = await updateEnrollmentStatusStore(rec.id, "approved", "অ্যাডমিন কর্তৃক ভর্তি অনুমোদন সম্পন্ন হয়েছে।");
+                              setEnrollmentList(updatedList);
                               await logAuditAction("ভর্তি অনুমোদন", `শিক্ষার্থী ${rec.student_name}-এর (${rec.course_title}) ভর্তি অনুমোদন করা হয়েছে।`);
+                              const freshList = await fetchEnrollmentsFromDatabase();
+                              setEnrollmentList(freshList);
                               alert("ভর্তি অনুমোদন সম্পন্ন হয়েছে!");
                             }
                           }}
@@ -3609,11 +3612,14 @@ export default function AdminDashboard() {
                   alert("অনুগ্রহ করে কারণ বা নির্দেশনা প্রদান করুন।");
                   return;
                 }
-                await updateEnrollmentStatusStore(reviewTargetRecord.id, reviewActionType, reviewAdminNote);
+                const updatedList = await updateEnrollmentStatusStore(reviewTargetRecord.id, reviewActionType, reviewAdminNote);
+                setEnrollmentList(updatedList);
                 await logAuditAction(
                   reviewActionType === "rejected" ? "ভর্তি আবেদন বাতিল" : "ভর্তিতে তথ্য সংশোধন চেয়ে নোটিশ",
                   `শিক্ষার্থী ${reviewTargetRecord.student_name}-এর আবেদনের স্ট্যাটাস ${reviewActionType} করা হয়েছে। কারণ: ${reviewAdminNote}`
                 );
+                const freshList = await fetchEnrollmentsFromDatabase();
+                setEnrollmentList(freshList);
                 alert("স্ট্যাটাস সফলভাবে আপডেট করা হয়েছে!");
                 setReviewModalOpen(false);
                 setReviewTargetRecord(null);

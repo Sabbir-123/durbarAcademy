@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import DashboardHeader from "@/components/DashboardHeader";
 import RegistrationModal from "@/components/RegistrationModal";
+import ProgressLoader from "@/components/ProgressLoader";
 import { createClient } from "@/utils/supabase/client";
 import {
   getStoredEnrollments,
@@ -184,18 +185,7 @@ export default function StudentCoursesPage() {
 
         {/* Courses Content Grid */}
         {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {[1, 2].map((i) => (
-              <div
-                key={i}
-                className="bg-[#0D2038] border border-white/10 rounded-3xl p-6 h-56 animate-pulse"
-              >
-                <div className="h-6 bg-white/10 rounded-lg w-3/4 mb-4" />
-                <div className="h-4 bg-white/5 rounded-lg w-1/2 mb-6" />
-                <div className="h-3 bg-white/10 rounded-full w-full mt-8" />
-              </div>
-            ))}
-          </div>
+          <ProgressLoader label="ডাটাবেজ থেকে ভর্তি তথ্য লোড করা হচ্ছে..." />
         ) : enrollments.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {enrollments.map((record) => {
