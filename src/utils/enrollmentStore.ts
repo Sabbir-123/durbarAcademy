@@ -21,37 +21,15 @@ export interface EnrollmentRecord {
 
 const STORAGE_KEY = "durbar_enrollment_requests_v1";
 
-const DEFAULT_RECORDS: EnrollmentRecord[] = [
-  // Initial fallback mock data matching user's pending application so Admin sees it immediately
-  {
-    id: "ENR-1786105001648",
-    student_id: "u1",
-    student_email: "student@durbar.academy",
-    course_id: "bafa-test-2",
-    course_title: "Bafa test 2",
-    course_price: 4000,
-    student_name: "Sabbir Student",
-    student_phone: "01626693505",
-    college: "The Scholars' College",
-    branch: "online",
-    payment_method: "bKash",
-    sender_number: "01626693505",
-    trx_id: "9JAS#21L",
-    status: "pending",
-    created_at: new Date().toISOString(),
-  },
-];
+const DEFAULT_RECORDS: EnrollmentRecord[] = [];
 
 export function getStoredEnrollments(): EnrollmentRecord[] {
   if (typeof window === "undefined") return DEFAULT_RECORDS;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_RECORDS));
-      return DEFAULT_RECORDS;
-    }
+    if (!raw) return DEFAULT_RECORDS;
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_RECORDS;
+    return Array.isArray(parsed) ? parsed : DEFAULT_RECORDS;
   } catch {
     return DEFAULT_RECORDS;
   }
@@ -78,6 +56,43 @@ export function saveEnrollmentStore(record: EnrollmentRecord): EnrollmentRecord[
   return updated;
 }
 
+export async function deleteEnrollmentRequestStore(enrollmentId: string): Promise<EnrollmentRecord[]> {
+  const current = getStoredEnrollments();
+  const updated = current.filter((e) => e.id !== enrollmentId);
+
+  if (typeof window !== "undefined") {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    window.dispatchEvent(new Event("durbar_enrollments_updated"));
+  }
+
+  try {
+    await fetch(`/api/enrollments?id=${encodeURIComponent(enrollmentId)}`, {
+      method: "DELETE",
+    });
+  } catch (err) {
+    console.warn("deleteEnrollmentRequestStore API warning:", err);
+  }
+
+  return updated;
+}
+
+export async function clearAllEnrollmentRequestsStore(): Promise<EnrollmentRecord[]> {
+  if (typeof window !== "undefined") {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+    window.dispatchEvent(new Event("durbar_enrollments_updated"));
+  }
+
+  try {
+    await fetch("/api/enrollments?all=true", {
+      method: "DELETE",
+    });
+  } catch (err) {
+    console.warn("clearAllEnrollmentRequestsStore API warning:", err);
+  }
+
+  return [];
+}
+
 export async function fetchEnrollmentsFromDatabase(): Promise<EnrollmentRecord[]> {
   const localItems = getStoredEnrollments();
 
@@ -99,10 +114,8 @@ export async function fetchEnrollmentsFromDatabase(): Promise<EnrollmentRecord[]
     const res = await fetch("/api/enrollments", { cache: "no-store" });
     if (res.ok) {
       const data = await res.json();
-      if (data.success && Array.isArray(data.enrollments) && data.enrollments.length > 0) {
-        for (const rec of data.enrollments) {
-          saveEnrollmentStore(rec);
-        }
+      if (data.success && Array.isArray(data.enrollments)) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data.enrollments));
         return data.enrollments;
       }
     }

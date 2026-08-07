@@ -47,6 +47,8 @@ import {
   getStoredEnrollments,
   fetchEnrollmentsFromDatabase,
   updateEnrollmentStatusStore,
+  deleteEnrollmentRequestStore,
+  clearAllEnrollmentRequestsStore,
   subscribeEnrollmentStore,
   EnrollmentRecord,
 } from "@/utils/enrollmentStore";
@@ -1443,6 +1445,22 @@ export default function AdminDashboard() {
                         >
                           <X className="w-3.5 h-3.5" />
                           <span>বাতিল করুন</span>
+                        </button>
+
+                        <button
+                          onClick={async () => {
+                            if (confirm(`আপনি কি ${rec.student_name}-এর (${rec.course_title}) ভর্তি আবেদনটি স্থায়ীভাবে মুছে ফেলতে চান?`)) {
+                              const updated = await deleteEnrollmentRequestStore(rec.id);
+                              setEnrollmentList(updated);
+                              await logAuditAction("ভর্তি আবেদন রিমুভ", `শিক্ষার্থী ${rec.student_name}-এর ভর্তি আবেদন মুছে ফেলা হয়েছে।`);
+                              alert("আবেদনটি সফলভাবে ডিলিট করা হয়েছে!");
+                            }
+                          }}
+                          className="px-3 py-2 rounded-xl bg-red-950/60 hover:bg-red-600 text-red-300 hover:text-white border border-red-500/30 text-xs font-bold transition-all flex items-center gap-1 shadow-md"
+                          title="আবেদন স্থায়ীভাবে মুছে ফেলুন"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>রিমুভ</span>
                         </button>
                       </div>
                     </div>
