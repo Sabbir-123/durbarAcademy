@@ -154,23 +154,23 @@ export default function Navbar({ onOpenRegisterModal }: NavbarProps) {
         </nav>
 
         {/* Right Side: Logged In Controls or Login CTA */}
-        <div className="hidden sm:flex items-center gap-3">
+        <div className="hidden sm:flex items-center gap-2.5">
           {user ? (
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2">
               {/* User Profile Pill */}
               <Link
                 href={getProfileHref()}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-all group shadow-sm"
+                className="h-10 px-3.5 rounded-xl bg-slate-100 hover:bg-slate-200/90 border border-slate-200/90 text-slate-900 transition-all flex items-center gap-2 shadow-sm hover:shadow group"
                 title="আমার প্রোফাইল সেটিং"
               >
-                <div className="w-7 h-7 rounded-full bg-[#07182E] text-amber-400 font-extrabold flex items-center justify-center text-xs overflow-hidden border border-amber-400/40 shrink-0">
+                <div className="w-6 h-6 rounded-full bg-[#07182E] text-amber-400 font-black flex items-center justify-center text-[11px] overflow-hidden border border-amber-400/40 shrink-0">
                   {user.avatar_url ? (
                     <img src={user.avatar_url} alt={user.full_name} className="w-full h-full object-cover" />
                   ) : (
                     <span>{user.full_name?.charAt(0)?.toUpperCase() || "U"}</span>
                   )}
                 </div>
-                <span className="text-xs font-bold text-slate-900 truncate max-w-[120px] group-hover:text-[#D97706] transition-colors">
+                <span className="text-xs font-bold text-slate-900 truncate max-w-[110px] group-hover:text-[#D97706] transition-colors">
                   {user.full_name}
                 </span>
               </Link>
@@ -178,26 +178,26 @@ export default function Navbar({ onOpenRegisterModal }: NavbarProps) {
               {/* Dashboard Icon Button */}
               <Link
                 href={getDashboardHref()}
-                className="px-3.5 py-2 text-xs font-extrabold text-slate-950 bg-gradient-to-r from-[#F59E0B] via-[#FACC15] to-[#F59E0B] hover:from-[#FACC15] hover:to-[#F59E0B] rounded-xl shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center gap-1.5 shrink-0"
+                className="h-10 px-4 rounded-xl bg-gradient-to-r from-[#F59E0B] via-[#FACC15] to-[#F59E0B] hover:from-[#FACC15] hover:to-[#F59E0B] text-slate-950 font-extrabold text-xs transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:scale-105 active:scale-95 shrink-0"
                 title="ড্যাশবোর্ডে প্রবেশ করুন"
               >
-                <LayoutDashboard className="w-4 h-4 text-slate-950" />
+                <LayoutDashboard className="w-4 h-4 text-slate-950 shrink-0" />
                 <span>ড্যাশবোর্ড</span>
               </Link>
 
               {/* Log Out Button */}
               <button
                 onClick={handleSignOut}
-                className="p-2.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 transition-all border border-red-200/80 shrink-0 flex items-center justify-center"
+                className="h-10 w-10 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200/80 transition-all flex items-center justify-center shrink-0 shadow-sm"
                 title="লগআউট করুন"
               >
-                <LogOut className="w-4 h-4" />
+                <LogOut className="w-4 h-4 shrink-0" />
               </button>
             </div>
           ) : (
             <Link
               href="/login"
-              className="px-5 py-2.5 text-xs sm:text-sm font-bold text-slate-950 bg-gradient-to-r from-[#F59E0B] via-[#FACC15] to-[#F59E0B] hover:from-[#FACC15] hover:to-[#F59E0B] rounded-xl shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+              className="h-10 px-5 text-xs sm:text-sm font-bold text-slate-950 bg-gradient-to-r from-[#F59E0B] via-[#FACC15] to-[#F59E0B] hover:from-[#FACC15] hover:to-[#F59E0B] rounded-xl shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2"
             >
               <span>লগইন করুন</span>
               <ArrowRight className="w-4 h-4" />
