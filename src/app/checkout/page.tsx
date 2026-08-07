@@ -408,14 +408,7 @@ function CheckoutContent() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-300 flex items-center justify-between">
-                      <span>ইমেইল এড্রেস:*</span>
-                      {isLoggedIn && (
-                        <span className="text-[10px] text-amber-400 font-bold">
-                          🔒 অ্যাকাউন্ট ইমেইল
-                        </span>
-                      )}
-                    </label>
+                    <label className="text-xs font-bold text-slate-300">ইমেইল এড্রেস:*</label>
                     <input
                       type="email"
                       required
