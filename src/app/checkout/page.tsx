@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import ProgressLoader from "@/components/ProgressLoader";
 import { COURSES, Course } from "@/data/courses";
 import { getStoredCourses } from "@/utils/courseStore";
 import { createClient } from "@/utils/supabase/client";
@@ -65,8 +66,14 @@ function CheckoutContent() {
   const [trackingId, setTrackingId] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   const supabase = createClient();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     async function loadInitialData() {
@@ -77,6 +84,7 @@ function CheckoutContent() {
       } = await supabase.auth.getUser();
 
       if (user) {
+        setIsLoggedIn(true);
         const { data: prof } = await supabase
           .from("profiles")
           .select("*")
@@ -276,6 +284,17 @@ function CheckoutContent() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  if (!mounted || isLoading) {
+    return (
+      <div className="min-h-screen bg-[#07182E] text-white flex flex-col font-sans">
+        <Navbar />
+        <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-12 flex items-center justify-center">
+          <ProgressLoader label="দুর্বার একাডেমি এডমিশন চেকেআউট লোড হচ্ছে..." />
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#07182E] text-white flex flex-col font-sans">
       <Navbar />
@@ -389,14 +408,27 @@ function CheckoutContent() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-300">ইমেইল এড্রেস:*</label>
+                    <label className="text-xs font-bold text-slate-300 flex items-center justify-between">
+                      <span>ইমেইল এড্রেস:*</span>
+                      {isLoggedIn && (
+                        <span className="text-[10px] text-amber-400 font-bold">
+                          🔒 অ্যাকাউন্ট ইমেইল
+                        </span>
+                      )}
+                    </label>
                     <input
                       type="email"
                       required
+                      readOnly={isLoggedIn}
+                      disabled={isLoggedIn}
                       placeholder="student@example.com"
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3.5 text-xs text-amber-400 font-mono focus:border-[#F59E0B] outline-none"
+                      onChange={(e) => !isLoggedIn && setEmail(e.target.value)}
+                      className={`w-full border rounded-xl p-3.5 text-xs font-mono outline-none ${
+                        isLoggedIn
+                          ? "bg-[#07182E]/60 text-amber-400 border-white/10 cursor-not-allowed opacity-90"
+                          : "bg-[#07182E] text-amber-400 border-white/10 focus:border-[#F59E0B]"
+                      }`}
                     />
                   </div>
 
