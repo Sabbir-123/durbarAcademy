@@ -91,9 +91,13 @@ export default function StudentCoursePlayer({ params }: { params: Promise<{ id: 
     const targetCourseId = matched?.id || courseIdFromRoute;
     const targetCourseTitle = matched?.title || "";
 
-    // 2. Load batches uploaded from Teacher Panel via classStore
+    // 2. Load classes uploaded from Teacher Panel via classStore
     const allBatches = getBatches();
-    let teacherBatches = allBatches.filter((b) => {
+    const allMilestones = getMilestones();
+    const allModules = getModules();
+    const allClasses = getClasses();
+
+    let targetBatches = allBatches.filter((b) => {
       if (!b.courseId) return true; // General unassigned batch
       if (b.courseId === targetCourseId || b.courseId === courseIdFromRoute) return true;
       if (matched && (matched as any).slug && b.courseId === (matched as any).slug) return true;
@@ -101,23 +105,21 @@ export default function StudentCoursePlayer({ params }: { params: Promise<{ id: 
       return false;
     });
 
-    if (teacherBatches.length === 0) {
-      teacherBatches = allBatches;
+    if (targetBatches.length === 0) {
+      targetBatches = allBatches;
     }
 
     const structuredSyllabus: DynamicMilestone[] = [];
 
-    if (teacherBatches.length > 0) {
-      teacherBatches.forEach((batch) => {
-        let batchMilestones = getMilestones(batch.id);
-
-        // Fallback: If no milestones exist for batch, construct a default milestone for the batch
+    if (targetBatches.length > 0) {
+      targetBatches.forEach((batch) => {
+        let batchMilestones = allMilestones.filter((m) => m.batchId === batch.id);
         if (batchMilestones.length === 0) {
-          batchMilestones = [
+          batchMilestones = allMilestones.length > 0 ? allMilestones : [
             {
               id: `virtual-m-${batch.id}`,
               batchId: batch.id,
-              title: `${batch.title} — সিলেবাস ও মূল পাঠদান`,
+              title: `${batch.title} — পাঠদান মাইলস্টোন`,
               description: batch.description || "",
               order: 1,
               createdAt: batch.createdAt || new Date().toISOString(),
@@ -126,37 +128,30 @@ export default function StudentCoursePlayer({ params }: { params: Promise<{ id: 
         }
 
         batchMilestones.forEach((m) => {
-          let mModules = getModules(m.id);
-
-          // Fallback: If no modules exist for milestone, check for modules belonging to batch or construct a default module
+          let mModules = allModules.filter((mod) => mod.milestoneId === m.id || mod.batchId === batch.id);
           if (mModules.length === 0) {
-            const batchMods = getModules().filter((mod) => mod.batchId === batch.id);
-            if (batchMods.length > 0) {
-              mModules = batchMods;
-            } else {
-              mModules = [
-                {
-                  id: `virtual-mod-${m.id}`,
-                  milestoneId: m.id,
-                  batchId: batch.id,
-                  title: `${m.title} — লেকচার মডিউল`,
-                  description: "",
-                  order: 1,
-                  createdAt: new Date().toISOString(),
-                },
-              ];
-            }
+            mModules = allModules.length > 0 ? allModules : [
+              {
+                id: `virtual-mod-${m.id}`,
+                milestoneId: m.id,
+                batchId: batch.id,
+                title: `${m.title} — লেকচার মডিউল`,
+                description: "",
+                order: 1,
+                createdAt: new Date().toISOString(),
+              },
+            ];
           }
 
           const dynamicMods: DynamicModule[] = [];
 
           mModules.forEach((mod) => {
-            let modClasses = getClasses(mod.id);
+            let modClasses = allClasses.filter(
+              (c) => c.moduleId === mod.id || c.milestoneId === m.id || c.batchId === batch.id
+            );
 
-            // Fallback: If no classes match mod.id, check if classes exist for milestone or batch
-            if (modClasses.length === 0) {
-              const allC = getClasses();
-              modClasses = allC.filter((c) => c.milestoneId === m.id || c.batchId === batch.id);
+            if (modClasses.length === 0 && allClasses.length > 0) {
+              modClasses = allClasses;
             }
 
             const dynamicLessons: DynamicLesson[] = modClasses.map((c) => ({
@@ -169,18 +164,22 @@ export default function StudentCoursePlayer({ params }: { params: Promise<{ id: 
               tests: c.tests || [],
             }));
 
-            dynamicMods.push({
-              id: mod.id,
-              title: mod.title,
-              lessons: dynamicLessons,
-            });
+            if (dynamicLessons.length > 0) {
+              dynamicMods.push({
+                id: mod.id,
+                title: mod.title,
+                lessons: dynamicLessons,
+              });
+            }
           });
 
-          structuredSyllabus.push({
-            id: m.id,
-            milestone: `${m.title} (${batch.title})`,
-            modules: dynamicMods,
-          });
+          if (dynamicMods.length > 0) {
+            structuredSyllabus.push({
+              id: m.id,
+              milestone: `${m.title}${batch.title ? ` (${batch.title})` : ""}`,
+              modules: dynamicMods,
+            });
+          }
         });
       });
     }
@@ -203,7 +202,7 @@ export default function StudentCoursePlayer({ params }: { params: Promise<{ id: 
                 id: "def-l1",
                 title: `${courseTitle} — ইন্ট্রোডাকশন ও ওরিয়েন্টেশন ক্লাস`,
                 description: "দুর্বার একাডেমির মেন্টরদের পরিচালিত ওরিয়েন্টেশন ক্লাস। কোর্স প্ল্যান ও সিলেবাসের সম্পূর্ণ গাইডলাইন।",
-                video: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+                video: "https://www.youtube.com/embed/5qap5aO4i9A",
                 duration: "২৫ মিনিট",
                 locked: false,
                 tests: [
@@ -219,7 +218,7 @@ export default function StudentCoursePlayer({ params }: { params: Promise<{ id: 
                 id: "def-l2",
                 title: "ডিফেন্স ভাইভা ও আইকিউ টেস্ট স্ট্র্যাটেজি",
                 description: "অফিসার ক্যাডেট ভাইভা ও আইকিউ টেস্টে সর্বোচ্চ সফলতার জন্য স্পেশাল টিপস ও ট্রিকস।",
-                video: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+                video: "https://www.youtube.com/embed/5qap5aO4i9A",
                 duration: "৩৫ মিনিট",
                 locked: false,
               },
