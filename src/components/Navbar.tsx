@@ -118,35 +118,35 @@ export default function Navbar({ onOpenRegisterModal }: NavbarProps) {
     <header className="sticky top-0 sm:top-3 z-50 transition-all duration-300 px-3 sm:px-6 lg:px-8 max-w-7xl mx-auto">
       {/* Floating White Navigation Container */}
       <div
-        className={`w-full bg-white text-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl transition-all duration-300 px-4 sm:px-6 py-3 border border-slate-200/80 flex items-center justify-between ${
+        className={`w-full bg-white text-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl transition-all duration-300 px-4 sm:px-6 py-3 border border-slate-200/80 flex items-center justify-between gap-4 ${
           scrolled ? "bg-white/95 backdrop-blur-md shadow-amber-950/10 py-2.5" : "bg-white"
         }`}
       >
         {/* Left: Official Brand Logo */}
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#07182E] via-[#0E2038] to-[#163255] p-0.5 flex items-center justify-center shadow-md group-hover:scale-105 transition-transform duration-300">
+        <Link href="/" className="flex items-center gap-2.5 sm:gap-3 group shrink-0">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-[#07182E] via-[#0E2038] to-[#163255] p-0.5 flex items-center justify-center shadow-md group-hover:scale-105 transition-transform duration-300">
             <div className="w-full h-full bg-[#07182E] rounded-[10px] flex items-center justify-center">
-              <GraduationCap className="w-5 h-5 text-[#F59E0B]" />
+              <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5 text-[#F59E0B]" />
             </div>
           </div>
           <div className="flex flex-col">
-            <span className="text-lg sm:text-xl font-black tracking-tight text-slate-950 flex items-center gap-1">
+            <span className="text-base sm:text-lg font-black tracking-tight text-slate-950 flex items-center gap-1">
               {SITE_CONFIG.name}
-              <span className="w-2 h-2 rounded-full bg-[#F59E0B]" />
+              <span className="w-1.5 h-1.5 rounded-full bg-[#F59E0B]" />
             </span>
-            <span className="text-[10px] font-extrabold text-[#D97706] tracking-wider uppercase">
+            <span className="text-[9px] sm:text-[10px] font-extrabold text-[#D97706] tracking-wider uppercase">
               {SITE_CONFIG.tagline}
             </span>
           </div>
         </Link>
 
         {/* Center: Navigation Links */}
-        <nav className="hidden md:flex items-center gap-7 text-sm font-semibold text-slate-700">
+        <nav className="hidden lg:flex items-center gap-5 xl:gap-7 text-xs xl:text-sm font-bold text-slate-700 shrink-0">
           {navLinks.map((link) => (
             <Link
               key={link.name}
               href={link.href}
-              className="hover:text-[#D97706] transition-colors relative py-1 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-[2px] after:bg-[#F59E0B] hover:after:w-full after:transition-all"
+              className="hover:text-[#D97706] transition-colors relative py-1 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-[2px] after:bg-[#F59E0B] hover:after:w-full after:transition-all whitespace-nowrap"
             >
               {link.name}
             </Link>
@@ -154,13 +154,13 @@ export default function Navbar({ onOpenRegisterModal }: NavbarProps) {
         </nav>
 
         {/* Right Side: Logged In Controls or Login CTA */}
-        <div className="hidden sm:flex items-center gap-2.5">
+        <div className="hidden sm:flex items-center gap-2 shrink-0">
           {user ? (
             <div className="flex items-center gap-2">
               {/* User Profile Pill */}
               <Link
                 href={getProfileHref()}
-                className="h-10 px-3.5 rounded-xl bg-slate-100 hover:bg-slate-200/90 border border-slate-200/90 text-slate-900 transition-all flex items-center gap-2 shadow-sm hover:shadow group"
+                className="h-10 px-3 rounded-xl bg-slate-100 hover:bg-slate-200/90 border border-slate-200/90 text-slate-900 transition-all flex items-center gap-2 shadow-sm hover:shadow group shrink-0"
                 title="আমার প্রোফাইল সেটিং"
               >
                 <div className="w-6 h-6 rounded-full bg-[#07182E] text-amber-400 font-black flex items-center justify-center text-[11px] overflow-hidden border border-amber-400/40 shrink-0">
@@ -170,7 +170,7 @@ export default function Navbar({ onOpenRegisterModal }: NavbarProps) {
                     <span>{user.full_name?.charAt(0)?.toUpperCase() || "U"}</span>
                   )}
                 </div>
-                <span className="text-xs font-bold text-slate-900 truncate max-w-[110px] group-hover:text-[#D97706] transition-colors">
+                <span className="text-xs font-bold text-slate-900 truncate max-w-[95px] xl:max-w-[120px] group-hover:text-[#D97706] transition-colors">
                   {user.full_name}
                 </span>
               </Link>
@@ -178,7 +178,7 @@ export default function Navbar({ onOpenRegisterModal }: NavbarProps) {
               {/* Dashboard Icon Button */}
               <Link
                 href={getDashboardHref()}
-                className="h-10 px-4 rounded-xl bg-gradient-to-r from-[#F59E0B] via-[#FACC15] to-[#F59E0B] hover:from-[#FACC15] hover:to-[#F59E0B] text-slate-950 font-extrabold text-xs transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:scale-105 active:scale-95 shrink-0"
+                className="h-10 px-3.5 sm:px-4 rounded-xl bg-gradient-to-r from-[#F59E0B] via-[#FACC15] to-[#F59E0B] hover:from-[#FACC15] hover:to-[#F59E0B] text-slate-950 font-extrabold text-xs transition-all flex items-center justify-center gap-1.5 shadow-md hover:shadow-lg hover:scale-105 active:scale-95 shrink-0"
                 title="ড্যাশবোর্ডে প্রবেশ করুন"
               >
                 <LayoutDashboard className="w-4 h-4 text-slate-950 shrink-0" />
@@ -197,7 +197,7 @@ export default function Navbar({ onOpenRegisterModal }: NavbarProps) {
           ) : (
             <Link
               href="/login"
-              className="h-10 px-5 text-xs sm:text-sm font-bold text-slate-950 bg-gradient-to-r from-[#F59E0B] via-[#FACC15] to-[#F59E0B] hover:from-[#FACC15] hover:to-[#F59E0B] rounded-xl shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2"
+              className="h-10 px-5 text-xs sm:text-sm font-bold text-slate-950 bg-gradient-to-r from-[#F59E0B] via-[#FACC15] to-[#F59E0B] hover:from-[#FACC15] hover:to-[#F59E0B] rounded-xl shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 shrink-0"
             >
               <span>লগইন করুন</span>
               <ArrowRight className="w-4 h-4" />
@@ -205,19 +205,21 @@ export default function Navbar({ onOpenRegisterModal }: NavbarProps) {
           )}
         </div>
 
-        {/* Mobile Menu Toggle Button */}
-        <div className="flex items-center gap-2 sm:hidden">
+        {/* Mobile / Tablet Menu Toggle Button */}
+        <div className="flex items-center gap-2 lg:hidden shrink-0">
           {user ? (
             <div className="flex items-center gap-1.5">
               <Link
                 href={getDashboardHref()}
                 className="p-2 bg-[#F59E0B] text-slate-950 rounded-xl text-xs font-bold flex items-center gap-1"
+                title="ড্যাশবোর্ড"
               >
                 <LayoutDashboard className="w-4 h-4" />
               </Link>
               <button
                 onClick={handleSignOut}
                 className="p-2 bg-red-50 text-red-600 rounded-xl text-xs font-bold border border-red-200"
+                title="লগআউট"
               >
                 <LogOut className="w-4 h-4" />
               </button>
@@ -240,9 +242,9 @@ export default function Navbar({ onOpenRegisterModal }: NavbarProps) {
         </div>
       </div>
 
-      {/* Mobile Drawer Menu */}
+      {/* Mobile & Tablet Drawer Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden mt-2 bg-white rounded-2xl shadow-2xl border border-slate-200 p-5 space-y-4 animate-fade-in">
+        <div className="lg:hidden mt-2 bg-white rounded-2xl shadow-2xl border border-slate-200 p-5 space-y-4 animate-fade-in">
           <nav className="flex flex-col space-y-2">
             {navLinks.map((link) => (
               <Link
