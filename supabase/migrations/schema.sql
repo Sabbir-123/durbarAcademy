@@ -613,3 +613,29 @@ BEGIN
         ON CONFLICT (user_id) DO UPDATE SET role = 'admin';
     END IF;
 END $$;
+
+-- ALTER ENROLLMENTS TABLE FOR CHECKOUT & ADMIN REVIEW FIELDS
+ALTER TABLE public.enrollments ADD COLUMN IF NOT EXISTS trx_id TEXT;
+ALTER TABLE public.enrollments ADD COLUMN IF NOT EXISTS sender_number TEXT;
+ALTER TABLE public.enrollments ADD COLUMN IF NOT EXISTS payment_method TEXT;
+ALTER TABLE public.enrollments ADD COLUMN IF NOT EXISTS payment_screenshot TEXT;
+ALTER TABLE public.enrollments ADD COLUMN IF NOT EXISTS student_name TEXT;
+ALTER TABLE public.enrollments ADD COLUMN IF NOT EXISTS student_phone TEXT;
+ALTER TABLE public.enrollments ADD COLUMN IF NOT EXISTS branch TEXT;
+ALTER TABLE public.enrollments ADD COLUMN IF NOT EXISTS college TEXT;
+ALTER TABLE public.enrollments ADD COLUMN IF NOT EXISTS course_title TEXT;
+ALTER TABLE public.enrollments ADD COLUMN IF NOT EXISTS course_price NUMERIC;
+ALTER TABLE public.enrollments ADD COLUMN IF NOT EXISTS admin_note TEXT;
+ALTER TABLE public.enrollments ADD COLUMN IF NOT EXISTS student_email TEXT;
+ALTER TABLE public.enrollments ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT now();
+
+ALTER TABLE public.enrollments ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Enrollments viewable by everyone" ON public.enrollments;
+CREATE POLICY "Enrollments viewable by everyone" ON public.enrollments FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Enrollments insertable by everyone" ON public.enrollments;
+CREATE POLICY "Enrollments insertable by everyone" ON public.enrollments FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Enrollments updatable by everyone" ON public.enrollments;
+CREATE POLICY "Enrollments updatable by everyone" ON public.enrollments FOR UPDATE USING (true);

@@ -317,13 +317,16 @@ export default function AdminDashboard() {
       setPaymentDetails(getStoredPaymentDetails());
     });
 
-    setEnrollmentList(getStoredEnrollments());
-    const unsubEnrollments = subscribeEnrollmentStore(() => {
-      setEnrollmentList(getStoredEnrollments());
-    });
-    fetchEnrollmentsFromDatabase().then((recs) => {
-      if (recs && recs.length > 0) setEnrollmentList(recs);
-    });
+    const loadEnrollments = () => {
+      fetchEnrollmentsFromDatabase().then((recs) => {
+        if (recs) setEnrollmentList(recs);
+      });
+    };
+    loadEnrollments();
+
+    const enrollmentInterval = setInterval(() => {
+      loadEnrollments();
+    }, 8000);
 
     setAuditLogs(getStoredAuditLogs());
 
@@ -374,9 +377,9 @@ export default function AdminDashboard() {
     return () => {
       unsubUsers();
       unsubCourses();
+      clearInterval(enrollmentInterval);
       unsubStories();
       unsubPayment();
-      unsubEnrollments();
     };
   }, []);
 
