@@ -9,6 +9,7 @@ import { UserCheck, Upload, CheckCircle2, ShieldAlert } from "lucide-react";
 export default function StudentProfilePage() {
   const [profile, setProfile] = useState<any>(null);
   const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [schoolName, setSchoolName] = useState("");
   const [address, setAddress] = useState("");
@@ -26,6 +27,8 @@ export default function StudentProfilePage() {
     async function loadData() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+
+      setEmail(user.email || "");
 
       const { data: prof } = await supabase
         .from("profiles")
@@ -238,8 +241,8 @@ export default function StudentProfilePage() {
               </div>
             </div>
 
-            {/* Grid 1: Name & Student Phone */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            {/* Grid 1: Name, Email & Student Phone */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
               <div>
                 <label className="font-bold text-slate-300 block mb-1">শিক্ষার্থীর পূর্ণ নাম:*</label>
                 <input
@@ -250,6 +253,19 @@ export default function StudentProfilePage() {
                   onChange={(e) => setFullName(e.target.value)}
                   className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3.5 text-white outline-none focus:border-[#F59E0B]"
                 />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-300 block mb-1">ইমেইল এড্রেস:*</label>
+                <input
+                  type="email"
+                  readOnly
+                  disabled
+                  value={email}
+                  placeholder="student@example.com"
+                  className="w-full bg-[#07182E]/60 border border-white/10 rounded-xl p-3.5 text-amber-400 font-mono outline-none cursor-not-allowed opacity-90"
+                />
+                <span className="text-[10px] text-slate-400 block mt-1">অফিশিয়াল অ্যাকাউন্ট ইমেইল এড্রেস</span>
               </div>
 
               <div>

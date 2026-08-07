@@ -54,6 +54,7 @@ function CheckoutContent() {
 
   const [selectedCourseId, setSelectedCourseId] = useState<string>("");
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [college, setCollege] = useState("");
   const [branch, setBranch] = useState("online");
@@ -70,7 +71,7 @@ function CheckoutContent() {
   useEffect(() => {
     async function loadInitialData() {
       setIsLoading(true);
-      // Check current user profile to prefill name & phone
+      // Check current user profile to prefill name, email & phone
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -89,6 +90,7 @@ function CheckoutContent() {
         } catch {}
 
         setName(prof?.full_name || localSaved.full_name || user.email?.split("@")[0] || "");
+        setEmail(user.email || prof?.email || localSaved.email || "");
         setPhone(prof?.phone || localSaved.phone || "");
         setCollege(prof?.college || localSaved.college || "");
       }
@@ -255,7 +257,7 @@ function CheckoutContent() {
 
     const newReq = await submitEnrollmentRequest({
       student_id: studentId,
-      student_email: user?.email || "",
+      student_email: email || user?.email || "",
       course_id: selectedCourse.id,
       course_title: selectedCourse.title,
       course_price: selectedCourse.price,
@@ -373,7 +375,7 @@ function CheckoutContent() {
                 </div>
 
                 {/* Student Info */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-300">শিক্ষার্থীর নাম:*</label>
                     <input
@@ -383,6 +385,18 @@ function CheckoutContent() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3.5 text-xs text-white focus:border-[#F59E0B] outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-300">ইমেইল এড্রেস:*</label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="student@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full bg-[#07182E] border border-white/10 rounded-xl p-3.5 text-xs text-amber-400 font-mono focus:border-[#F59E0B] outline-none"
                     />
                   </div>
 
