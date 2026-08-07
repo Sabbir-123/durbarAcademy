@@ -3,10 +3,24 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { GraduationCap, ArrowRight, Menu, X, LayoutDashboard, LogOut, User as UserIcon } from "lucide-react";
+import {
+  GraduationCap,
+  ArrowRight,
+  Menu,
+  X,
+  LayoutDashboard,
+  LogOut,
+  User as UserIcon,
+  Loader2,
+} from "lucide-react";
 import { SITE_CONFIG } from "@/config/siteConfig";
 import { createClient } from "@/utils/supabase/client";
-import { getCurrentUser, setCurrentUser, isSuperAdminEmail, subscribeUserStore } from "@/utils/userStore";
+import {
+  getCurrentUser,
+  setCurrentUser,
+  isSuperAdminEmail,
+  subscribeUserStore,
+} from "@/utils/userStore";
 
 interface NavbarProps {
   onOpenRegisterModal?: (courseId?: string) => void;
@@ -17,6 +31,7 @@ export default function Navbar({ onOpenRegisterModal }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [userRole, setUserRole] = useState<string>("student");
+  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
 
   const router = useRouter();
   const supabase = createClient();
@@ -30,6 +45,14 @@ export default function Navbar({ onOpenRegisterModal }: NavbarProps) {
   }, []);
 
   const checkAuthUser = async () => {
+    // 1. Synchronously read cached user from local storage (0ms instant render!)
+    const cachedUser = getCurrentUser();
+    if (cachedUser) {
+      setUser(cachedUser);
+      setUserRole(cachedUser.role?.toLowerCase() || "student");
+      setIsAuthLoading(false);
+    }
+
     try {
       const {
         data: { user: authUser },
@@ -52,26 +75,27 @@ export default function Navbar({ onOpenRegisterModal }: NavbarProps) {
           prof?.user_roles?.role ||
           (isSuperAdminEmail(authUser.email || "") ? "admin" : "student");
 
-        setUser({
+        const userData = {
           id: authUser.id,
-          email: authUser.email,
+          email: authUser.email || "",
           full_name: prof?.full_name || localSaved.full_name || authUser.email?.split("@")[0] || "User",
           avatar_url: prof?.avatar_url || localSaved.avatar_url || "",
           role: role,
-        });
+        };
+
+        setUser(userData);
         setUserRole(role);
-      } else {
-        const curr = getCurrentUser();
-        if (curr) {
-          setUser(curr);
-          setUserRole(curr.role?.toLowerCase() || "student");
-        } else {
-          setUser(null);
-        }
+        setCurrentUser(userData);
+      } else if (!cachedUser) {
+        setUser(null);
+        setCurrentUser(null);
       }
     } catch {
-      const curr = getCurrentUser();
-      setUser(curr);
+      if (!cachedUser) {
+        setUser(null);
+      }
+    } finally {
+      setIsAuthLoading(false);
     }
   };
 
@@ -153,10 +177,16 @@ export default function Navbar({ onOpenRegisterModal }: NavbarProps) {
           ))}
         </nav>
 
-        {/* Right Side: Logged In Controls or Login CTA */}
+        {/* Right Side: Logged In Controls / Custom Loader / Login CTA */}
         <div className="hidden sm:flex items-center gap-2.5 shrink-0">
-          {user ? (
-            <div className="flex items-center gap-2">
+          {isAuthLoading && !user ? (
+            /* Custom Premium Auth Loading Pill */
+            <div className="h-10 px-4 rounded-xl bg-slate-100/90 border border-slate-200/80 flex items-center justify-center gap-2 animate-pulse shrink-0 shadow-sm">
+              <Loader2 className="w-4 h-4 text-[#F59E0B] animate-spin shrink-0" />
+              <span className="text-xs font-bold text-slate-500">যাঁচাই করা হচ্ছে...</span>
+            </div>
+          ) : user ? (
+            <div className="flex items-center gap-2 animate-fade-in">
               {/* User Profile Pill */}
               <Link
                 href={getProfileHref()}
@@ -197,7 +227,7 @@ export default function Navbar({ onOpenRegisterModal }: NavbarProps) {
           ) : (
             <Link
               href="/login"
-              className="h-10 px-5 text-xs sm:text-sm font-bold text-slate-950 bg-gradient-to-r from-[#F59E0B] via-[#FACC15] to-[#F59E0B] hover:from-[#FACC15] hover:to-[#F59E0B] rounded-xl shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 shrink-0"
+              className="h-10 px-5 text-xs sm:text-sm font-bold text-slate-950 bg-gradient-to-r from-[#F59E0B] via-[#FACC15] to-[#F59E0B] hover:from-[#FACC15] hover:to-[#F59E0B] rounded-xl shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 shrink-0 animate-fade-in"
             >
               <span>লগইন করুন</span>
               <ArrowRight className="w-4 h-4" />
@@ -207,7 +237,11 @@ export default function Navbar({ onOpenRegisterModal }: NavbarProps) {
 
         {/* Mobile / Tablet Menu Toggle Button */}
         <div className="flex items-center gap-2 lg:hidden shrink-0">
-          {user ? (
+          {isAuthLoading && !user ? (
+            <div className="h-9 px-3 rounded-xl bg-slate-100 flex items-center gap-1.5 animate-pulse">
+              <Loader2 className="w-3.5 h-3.5 text-[#F59E0B] animate-spin" />
+            </div>
+          ) : user ? (
             <div className="flex items-center gap-1.5">
               <Link
                 href={getDashboardHref()}
