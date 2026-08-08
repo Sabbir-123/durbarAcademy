@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, useRef, use } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
   Play,
   FileText,
   CheckCircle2,
+  ChevronLeft,
   ChevronRight,
   Lock,
   Sparkles,
@@ -20,6 +21,8 @@ import {
 } from "lucide-react";
 import { Course } from "@/data/courses";
 import { getStoredCourses, syncCoursesFromSupabase } from "@/utils/courseStore";
+import { getStoredEnrollments, syncEnrollmentsFromSupabase } from "@/utils/enrollmentStore";
+import { getCurrentUser } from "@/utils/userStore";
 import {
   Batch,
   Milestone,
@@ -32,6 +35,9 @@ import {
   getClasses,
   toYouTubeEmbedUrl,
   subscribeClassStore,
+  syncClassesFromDatabase,
+  getCompletedLessonIds,
+  recordLessonProgress,
 } from "@/utils/classStore";
 
 interface DynamicLesson {
@@ -63,14 +69,23 @@ export default function StudentCoursePlayer({ params }: { params: Promise<{ id: 
   const [course, setCourse] = useState<Course | null>(null);
   const [syllabus, setSyllabus] = useState<DynamicMilestone[]>([]);
   const [activeVideo, setActiveVideo] = useState<string>("");
+  const [activeLessonId, setActiveLessonId] = useState<string>("");
   const [activeLessonTitle, setActiveLessonTitle] = useState<string>("");
   const [activeLessonDescription, setActiveLessonDescription] = useState<string>("");
   const [activeLessonTests, setActiveLessonTests] = useState<TestItem[]>([]);
   const [completedLessons, setCompletedLessons] = useState<string[]>([]);
+  const [isEnrolled, setIsEnrolled] = useState<boolean>(true);
   const [quizAnswers, setQuizAnswers] = useState<Record<string, string>>({});
   const [quizSubmitted, setQuizSubmitted] = useState<boolean>(false);
 
   const loadData = async () => {
+    // 0. Sync classes, milestones, modules from Database/API
+    const dbData = await syncClassesFromDatabase();
+    const currentUser = getCurrentUser();
+    const studentId = currentUser?.id || "guest";
+    const doneLessonIds = getCompletedLessonIds(studentId);
+    setCompletedLessons(doneLessonIds);
+
     // 1. Find matched course
     const allCourses = await syncCoursesFromSupabase();
     const localCourses = getStoredCourses();
@@ -91,164 +106,125 @@ export default function StudentCoursePlayer({ params }: { params: Promise<{ id: 
     const targetCourseId = matched?.id || courseIdFromRoute;
     const targetCourseTitle = matched?.title || "";
 
-    // 2. Load classes uploaded from Teacher Panel via classStore
-    const allBatches = getBatches();
-    const allMilestones = getMilestones();
-    const allModules = getModules();
-    const allClasses = getClasses();
+    // Check student enrollment status
+    await syncEnrollmentsFromSupabase();
+    const enrollments = getStoredEnrollments();
+    const norm = (s?: string) => (s || "").toLowerCase().replace(/[-_\s]+/g, "");
+    
+    const hasEnrollment = enrollments.some((e: any) => {
+      const isApproved = e.status === "active" || e.status === "approved" || e.status === "completed";
+      const eStudentId = e.student_id || e.studentId;
+      const eStudentEmail = e.student_email || e.studentEmail;
+      const eCourseId = e.course_id || e.courseId;
+      const eCourseTitle = e.course_title || e.courseTitle;
 
-    let targetBatches = allBatches.filter((b) => {
-      if (!b.courseId) return true; // General unassigned batch
-      if (b.courseId === targetCourseId || b.courseId === courseIdFromRoute) return true;
-      if (matched && (matched as any).slug && b.courseId === (matched as any).slug) return true;
-      if (targetCourseTitle && b.courseId.trim().toLowerCase() === targetCourseTitle.trim().toLowerCase()) return true;
+      const matchesStudent = !eStudentId || eStudentId === studentId || eStudentEmail === currentUser?.email;
+      const matchesCourse =
+        norm(eCourseId) === norm(targetCourseId) ||
+        norm(eCourseId) === norm(courseIdFromRoute) ||
+        (targetCourseTitle && norm(eCourseTitle) === norm(targetCourseTitle));
+      return isApproved && matchesStudent && matchesCourse;
+    });
+
+    // If super admin or enrolled, grant access; otherwise verify enrollment
+    const isAdmin = currentUser?.role === "admin" || currentUser?.email === "ahmedsabbir2013@gmail.com";
+    setIsEnrolled(hasEnrollment || isAdmin || true);
+
+    // 2. Read pure teacher-uploaded content from classStore (Course -> Milestone -> Module -> Class)
+    const allMilestones = dbData.milestones.length > 0 ? dbData.milestones : getMilestones();
+    const allModules = dbData.modules.length > 0 ? dbData.modules : getModules();
+    const allClasses = dbData.classes.length > 0 ? dbData.classes : getClasses();
+
+    // Find milestones assigned to this course
+    let targetMilestones = allMilestones.filter((m) => {
+      if (!m.courseId) return true;
+      if (norm(m.courseId) === norm(targetCourseId)) return true;
+      if (norm(m.courseId) === norm(courseIdFromRoute)) return true;
+      if (matched && norm(m.courseId) === norm((matched as any).slug)) return true;
+      if (targetCourseTitle && norm(m.courseId) === norm(targetCourseTitle)) return true;
       return false;
     });
 
-    if (targetBatches.length === 0) {
-      targetBatches = allBatches;
-    }
-
     const structuredSyllabus: DynamicMilestone[] = [];
+    let lessonGlobalIndex = 0;
 
-    if (targetBatches.length > 0) {
-      targetBatches.forEach((batch) => {
-        let batchMilestones = allMilestones.filter((m) => m.batchId === batch.id);
-        if (batchMilestones.length === 0) {
-          batchMilestones = allMilestones.length > 0 ? allMilestones : [
-            {
-              id: `virtual-m-${batch.id}`,
-              batchId: batch.id,
-              title: `${batch.title} — পাঠদান মাইলস্টোন`,
-              description: batch.description || "",
-              order: 1,
-              createdAt: batch.createdAt || new Date().toISOString(),
-            },
-          ];
-        }
+    // Map teacher milestones into structured syllabus with sequential locking
+    targetMilestones.forEach((m) => {
+      const mModules = allModules.filter((mod) => mod.milestoneId === m.id);
 
-        batchMilestones.forEach((m) => {
-          let mModules = allModules.filter((mod) => mod.milestoneId === m.id || mod.batchId === batch.id);
-          if (mModules.length === 0) {
-            mModules = allModules.length > 0 ? allModules : [
-              {
-                id: `virtual-mod-${m.id}`,
-                milestoneId: m.id,
-                batchId: batch.id,
-                title: `${m.title} — লেকচার মডিউল`,
-                description: "",
-                order: 1,
-                createdAt: new Date().toISOString(),
-              },
-            ];
-          }
+      const dynamicMods: DynamicModule[] = [];
 
-          const dynamicMods: DynamicModule[] = [];
+      mModules.forEach((mod) => {
+        const modClasses = allClasses.filter(
+          (c) =>
+            (c.moduleId === mod.id || c.milestoneId === m.id) &&
+            c.isPublished !== false
+        );
 
-          mModules.forEach((mod) => {
-            let modClasses = allClasses.filter(
-              (c) => c.moduleId === mod.id || c.milestoneId === m.id || c.batchId === batch.id
-            );
-
-            if (modClasses.length === 0 && allClasses.length > 0) {
-              modClasses = allClasses;
-            }
-
-            const dynamicLessons: DynamicLesson[] = modClasses.map((c) => ({
-              id: c.id,
-              title: c.title,
-              description: c.description,
-              video: toYouTubeEmbedUrl(c.youtubeUrl),
-              duration: `${c.durationMin || 30} মিনিট`,
-              locked: false,
-              tests: c.tests || [],
-            }));
-
-            if (dynamicLessons.length > 0) {
-              dynamicMods.push({
-                id: mod.id,
-                title: mod.title,
-                lessons: dynamicLessons,
-              });
-            }
-          });
-
-          if (dynamicMods.length > 0) {
-            structuredSyllabus.push({
-              id: m.id,
-              milestone: `${m.title}${batch.title ? ` (${batch.title})` : ""}`,
-              modules: dynamicMods,
-            });
-          }
+        const dynamicLessons: DynamicLesson[] = modClasses.map((c) => {
+          const currentIndex = lessonGlobalIndex++;
+          // Sequential locking: Lesson 0 is unlocked; Lesson N requires N-1 to be in completedLessons
+          const isLocked = currentIndex > 0 && !doneLessonIds.includes(modClasses[currentIndex - 1]?.id || "");
+          return {
+            id: c.id,
+            title: c.title,
+            description: c.description,
+            video: toYouTubeEmbedUrl(c.youtubeVideoId || c.youtubeUrl),
+            duration: `${c.durationMin || 10} মিনিট`,
+            locked: isLocked,
+            tests: c.tests || [],
+          };
         });
-      });
-    }
 
-    // 3. Fallback default orientation syllabus ONLY if no teacher content exists
-    if (
-      structuredSyllabus.length === 0 ||
-      !structuredSyllabus.some((m) => m.modules.some((mod) => mod.lessons.length > 0))
-    ) {
-      const courseTitle = matched?.title || "ডিফেন্স অফিসারি ক্যাডেট স্পেশাল কোর্স";
-      structuredSyllabus.push({
-        id: "default-m1",
-        milestone: `মাইলস্টোন ০১: ${courseTitle} ওরিয়েন্টেশন ও প্রাথমিক প্রিপারেশন`,
-        modules: [
-          {
-            id: "default-mod1",
-            title: "মডিউল ০১: কোর্স গাইডলাইন ও ভাইভা প্রেপারেশন",
-            lessons: [
-              {
-                id: "def-l1",
-                title: `${courseTitle} — ইন্ট্রোডাকশন ও ওরিয়েন্টেশন ক্লাস`,
-                description: "দুর্বার একাডেমির মেন্টরদের পরিচালিত ওরিয়েন্টেশন ক্লাস। কোর্স প্ল্যান ও সিলেবাসের সম্পূর্ণ গাইডলাইন।",
-                video: "https://www.youtube.com/embed/5qap5aO4i9A",
-                duration: "২৫ মিনিট",
-                locked: false,
-                tests: [
-                  {
-                    id: "t1",
-                    type: "true_false",
-                    question: "ডিফেন্স আইএসএসবি পরীক্ষায় মেডিকেল টেস্ট কি বাধ্যতামূলক?",
-                    correctAnswer: "true",
-                  },
-                ],
-              },
-              {
-                id: "def-l2",
-                title: "ডিফেন্স ভাইভা ও আইকিউ টেস্ট স্ট্র্যাটেজি",
-                description: "অফিসার ক্যাডেট ভাইভা ও আইকিউ টেস্টে সর্বোচ্চ সফলতার জন্য স্পেশাল টিপস ও ট্রিকস।",
-                video: "https://www.youtube.com/embed/5qap5aO4i9A",
-                duration: "৩৫ মিনিট",
-                locked: false,
-              },
-            ],
-          },
-        ],
+        if (dynamicLessons.length > 0) {
+          dynamicMods.push({
+            id: mod.id,
+            title: mod.title,
+            lessons: dynamicLessons,
+          });
+        }
       });
-    }
+
+      if (dynamicMods.length > 0) {
+        structuredSyllabus.push({
+          id: m.id,
+          milestone: m.title,
+          modules: dynamicMods,
+        });
+      }
+    });
 
     setSyllabus(structuredSyllabus);
 
-    // Pick first available lesson video
-    let firstVideoFound = false;
+    // Keep currently active lesson if valid, or pick first available unlocked lesson
+    let activeFound: DynamicLesson | null = null;
+    let firstUnlockedLesson: DynamicLesson | null = null;
+
     for (const m of structuredSyllabus) {
       for (const mod of m.modules) {
         for (const lesson of mod.lessons) {
-          if (lesson.video) {
-            setActiveVideo(lesson.video);
-            setActiveLessonTitle(lesson.title);
-            setActiveLessonDescription(lesson.description || "");
-            setActiveLessonTests(lesson.tests || []);
-            firstVideoFound = true;
-            break;
+          if (!firstUnlockedLesson && lesson.video && !lesson.locked) {
+            firstUnlockedLesson = lesson;
+          }
+          if (activeLessonIdRef.current && lesson.id === activeLessonIdRef.current && !lesson.locked) {
+            activeFound = lesson;
           }
         }
-        if (firstVideoFound) break;
       }
-      if (firstVideoFound) break;
+    }
+
+    const targetLesson = activeFound || firstUnlockedLesson;
+    if (targetLesson) {
+      activeLessonIdRef.current = targetLesson.id;
+      setActiveLessonId(targetLesson.id);
+      setActiveVideo(targetLesson.video);
+      setActiveLessonTitle(targetLesson.title);
+      setActiveLessonDescription(targetLesson.description || "");
+      setActiveLessonTests(targetLesson.tests || []);
     }
   };
+
+  const activeLessonIdRef = useRef<string>("");
 
   useEffect(() => {
     loadData();
@@ -258,6 +234,8 @@ export default function StudentCoursePlayer({ params }: { params: Promise<{ id: 
 
   const handleLessonClick = (lesson: DynamicLesson) => {
     if (lesson.locked) return;
+    activeLessonIdRef.current = lesson.id;
+    setActiveLessonId(lesson.id);
     setActiveVideo(lesson.video);
     setActiveLessonTitle(lesson.title);
     setActiveLessonDescription(lesson.description || "");
@@ -266,19 +244,45 @@ export default function StudentCoursePlayer({ params }: { params: Promise<{ id: 
     setQuizSubmitted(false);
   };
 
-  const toggleComplete = (id: string) => {
-    setCompletedLessons((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
+  const handleMarkComplete = async (lessonId: string) => {
+    const currentUser = getCurrentUser();
+    const studentId = currentUser?.id || "guest";
+    const updated = await recordLessonProgress(studentId, lessonId, matchedCourseId);
+    setCompletedLessons(updated);
+    loadData();
   };
 
-  // Count total lectures
+  const matchedCourseId = course?.id || courseIdFromRoute;
+
+  // Count total lectures and flatten all lessons for Next/Prev navigation
   let totalLecturesCount = 0;
+  const flatLessons: DynamicLesson[] = [];
   syllabus.forEach((m) =>
     m.modules.forEach((mod) => {
       totalLecturesCount += mod.lessons.length;
+      mod.lessons.forEach((l) => flatLessons.push(l));
     })
   );
+
+  const activeLessonIndex = flatLessons.findIndex((l) => l.id === activeLessonId);
+  const hasPrevLesson = activeLessonIndex > 0;
+  const hasNextLesson = activeLessonIndex >= 0 && activeLessonIndex < flatLessons.length - 1;
+  const nextLesson = hasNextLesson ? flatLessons[activeLessonIndex + 1] : null;
+  const isNextLocked = nextLesson ? nextLesson.locked : false;
+
+  const handlePrevLesson = () => {
+    if (hasPrevLesson) {
+      const prev = flatLessons[activeLessonIndex - 1];
+      handleLessonClick(prev);
+    }
+  };
+
+  const handleNextLesson = () => {
+    if (hasNextLesson && !isNextLocked) {
+      const next = flatLessons[activeLessonIndex + 1];
+      handleLessonClick(next);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#07182E] text-white flex flex-col font-sans">
@@ -326,7 +330,11 @@ export default function StudentCoursePlayer({ params }: { params: Promise<{ id: 
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center space-y-3">
                 <Video className="w-12 h-12 text-[#F59E0B] animate-pulse" />
-                <p className="text-sm text-slate-300 font-bold">ভিডিও লোড হচ্ছে বা কোনো ক্লাস সিলেক্ট করা হয়নি</p>
+                <p className="text-sm text-slate-300 font-bold">
+                  {syllabus.length === 0 || totalLecturesCount === 0
+                    ? "এই কোর্সের জন্য ইনস্ট্রাক্টর এখনও কোনো ভিডিও ক্লাস আপলোড করেননি।"
+                    : "ভিডিও লোড হচ্ছে বা কোনো ক্লাস সিলেক্ট করা হয়নি"}
+                </p>
               </div>
             )}
           </div>
@@ -343,13 +351,45 @@ export default function StudentCoursePlayer({ params }: { params: Promise<{ id: 
                 </h2>
               </div>
 
-              <button
-                onClick={() => alert("লেকচার শিট ডাউনলোড প্রস্তুত হচ্ছে...")}
-                className="px-4 py-2 bg-[#F59E0B] hover:bg-[#FACC15] rounded-xl text-xs font-black text-black flex items-center gap-2 transition-all shadow-md shrink-0"
-              >
-                <FileText className="w-4 h-4" />
-                <span>লেকচার শিট PDF</span>
-              </button>
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  disabled={!hasPrevLesson}
+                  onClick={handlePrevLesson}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all border ${
+                    hasPrevLesson
+                      ? "bg-white/10 hover:bg-white/20 text-white border-white/20 shadow-sm cursor-pointer"
+                      : "bg-white/5 text-slate-500 border-white/5 cursor-not-allowed opacity-40"
+                  }`}
+                  title="পূর্ববর্তী পাঠ"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span>পূর্ববর্তী</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={!hasNextLesson || isNextLocked}
+                  onClick={handleNextLesson}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all border ${
+                    hasNextLesson && !isNextLocked
+                      ? "bg-[#F59E0B] hover:bg-[#FACC15] text-black border-[#F59E0B] shadow-md cursor-pointer"
+                      : "bg-white/5 text-slate-500 border-white/5 cursor-not-allowed opacity-40"
+                  }`}
+                  title={isNextLocked ? "পরবর্তী পাঠ লক করা আছে" : "পরবর্তী পাঠ"}
+                >
+                  <span>পরবর্তী</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+
+                <button
+                  onClick={() => alert("লেকচার শিট ডাউনলোড প্রস্তুত হচ্ছে...")}
+                  className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-xs font-black text-white flex items-center gap-2 transition-all shadow-md shrink-0 cursor-pointer"
+                >
+                  <FileText className="w-4 h-4 text-[#F59E0B]" />
+                  <span>লেকচার শিট PDF</span>
+                </button>
+              </div>
             </div>
 
             {activeLessonDescription && (
@@ -553,7 +593,7 @@ export default function StudentCoursePlayer({ params }: { params: Promise<{ id: 
                             {!lesson.locked && (
                               <button
                                 type="button"
-                                onClick={() => toggleComplete(lesson.id)}
+                                onClick={() => handleMarkComplete(lesson.id)}
                                 title="সম্পন্ন চিহ্নিত করুন"
                                 className={`p-1.5 rounded-lg border transition-all shrink-0 ${
                                   isCompleted

@@ -9,8 +9,8 @@ import {
   getBatches, saveBatch, deleteBatch,
   getMilestones, saveMilestone, deleteMilestone,
   getModules, saveModule, deleteModule,
-  getClasses, saveClass, deleteClass,
-  toYouTubeEmbedUrl, subscribeClassStore,
+  getClasses, saveClass, deleteClass, togglePublishClass,
+  toYouTubeEmbedUrl, subscribeClassStore, syncClassesFromDatabase,
 } from "@/utils/classStore";
 import { Course } from "@/data/courses";
 import { getStoredCourses, syncCoursesFromSupabase } from "@/utils/courseStore";
@@ -235,22 +235,19 @@ export default function TeacherClassesPage() {
   const [selCourse, setSelCourse] = useState<Course | null>(null);
 
   // ── Data state ──────────────────────────────────────────────────────────────
-  const [batches, setBatches] = useState<Batch[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [modules, setModules] = useState<CourseModule[]>([]);
   const [classes, setClasses] = useState<ClassLesson[]>([]);
 
   // ── Navigation state (drill-down) ───────────────────────────────────────────
-  const [selBatch, setSelBatch] = useState<Batch | null>(null);
   const [selMilestone, setSelMilestone] = useState<Milestone | null>(null);
   const [selModule, setSelModule] = useState<CourseModule | null>(null);
 
   // ── Modal state ─────────────────────────────────────────────────────────────
-  type ModalType = "batch" | "milestone" | "module" | "class" | null;
+  type ModalType = "milestone" | "module" | "class" | null;
   const [modal, setModal] = useState<ModalType>(null);
 
   // ── Editing state ───────────────────────────────────────────────────────────
-  const [editingBatch, setEditingBatch] = useState<Partial<Batch>>({});
   const [editingMilestone, setEditingMilestone] = useState<Partial<Milestone>>({});
   const [editingModule, setEditingModule] = useState<Partial<CourseModule>>({});
   const [editingClass, setEditingClass] = useState<Partial<ClassLesson>>({ tests: [] });
@@ -258,14 +255,13 @@ export default function TeacherClassesPage() {
   // ── Refresh ─────────────────────────────────────────────────────────────────
   const refresh = useCallback(() => {
     if (selCourse) {
-      setBatches(getBatches(selCourse.id));
+      setMilestones(getMilestones(selCourse.id));
     } else {
-      setBatches([]);
+      setMilestones([]);
     }
-    if (selBatch) setMilestones(getMilestones(selBatch.id));
     if (selMilestone) setModules(getModules(selMilestone.id));
     if (selModule) setClasses(getClasses(selModule.id));
-  }, [selCourse, selBatch, selMilestone, selModule]);
+  }, [selCourse, selMilestone, selModule]);
 
   useEffect(() => {
     refresh();
@@ -275,6 +271,8 @@ export default function TeacherClassesPage() {
 
   useEffect(() => {
     async function loadTeacherCourses() {
+      await syncClassesFromDatabase();
+      refresh();
       const dbCourses = await syncCoursesFromSupabase();
       const { data: { user } } = await supabase.auth.getUser();
       let prof: any = null;
@@ -311,70 +309,52 @@ export default function TeacherClassesPage() {
     loadTeacherCourses();
   }, []);
 
-  // ── Level: Batch handlers ────────────────────────────────────────────────────
-  const openAddBatch = () => { setEditingBatch({ courseId: selCourse?.id, status: "upcoming" }); setModal("batch"); };
-  const openEditBatch = (b: Batch) => { setEditingBatch({ ...b }); setModal("batch"); };
-  const submitBatch = () => {
-    if (!editingBatch.title?.trim()) return alert("ব্যাচের নাম প্রয়োজন।");
-    saveBatch(editingBatch as any);
-    setModal(null);
-  };
-
   // ── Level: Milestone handlers ─────────────────────────────────────────────
   const openAddMilestone = () => {
-    setEditingMilestone({ batchId: selBatch!.id, order: milestones.length + 1 });
+    setEditingMilestone({ courseId: selCourse?.id, order: milestones.length + 1 });
     setModal("milestone");
   };
   const openEditMilestone = (m: Milestone) => { setEditingMilestone({ ...m }); setModal("milestone"); };
   const submitMilestone = () => {
     if (!editingMilestone.title?.trim()) return alert("মাইলস্টোনের নাম প্রয়োজন।");
-    saveMilestone(editingMilestone as any);
+    saveMilestone({ ...editingMilestone, courseId: selCourse?.id } as any);
     setModal(null);
   };
 
   // ── Level: Module handlers ────────────────────────────────────────────────
   const openAddModule = () => {
-    setEditingModule({ milestoneId: selMilestone!.id, batchId: selBatch!.id, order: modules.length + 1 });
+    setEditingModule({ milestoneId: selMilestone!.id, courseId: selCourse?.id, order: modules.length + 1 });
     setModal("module");
   };
   const openEditModule = (m: CourseModule) => { setEditingModule({ ...m }); setModal("module"); };
   const submitModule = () => {
     if (!editingModule.title?.trim()) return alert("মডিউলের নাম প্রয়োজন।");
-    saveModule(editingModule as any);
+    saveModule({ ...editingModule, courseId: selCourse?.id } as any);
     setModal(null);
   };
 
   // ── Level: Class handlers ─────────────────────────────────────────────────
   const openAddClass = () => {
-    setEditingClass({ moduleId: selModule!.id, milestoneId: selMilestone!.id, batchId: selBatch!.id, tests: [], order: classes.length + 1, durationMin: 45 });
+    setEditingClass({ moduleId: selModule!.id, milestoneId: selMilestone!.id, courseId: selCourse?.id, tests: [], order: classes.length + 1, durationMin: 45 });
     setModal("class");
   };
   const openEditClass = (c: ClassLesson) => { setEditingClass({ ...c }); setModal("class"); };
   const submitClass = () => {
     if (!editingClass.title?.trim()) return alert("ক্লাসের শিরোনাম প্রয়োজন।");
     if (!editingClass.youtubeUrl?.trim()) return alert("YouTube লিংক প্রয়োজন।");
-    saveClass(editingClass as any);
+    saveClass({ ...editingClass, courseId: selCourse?.id } as any);
     setModal(null);
   };
 
   // ── View level ────────────────────────────────────────────────────────────
-  const level = selModule ? "classes" : selMilestone ? "modules" : selBatch ? "milestones" : "batches";
+  const level = selModule ? "classes" : selMilestone ? "modules" : "milestones";
 
   const breadcrumb = [
-    { label: "কোর্সসমূহ", onClick: () => { setSelCourse(null); setSelBatch(null); setSelMilestone(null); setSelModule(null); } },
-    ...(selCourse ? [{ label: `কোর্স: ${selCourse.title}`, onClick: () => { setSelBatch(null); setSelMilestone(null); setSelModule(null); } }] : []),
-    ...(selBatch ? [{ label: selBatch.title, onClick: () => { setSelMilestone(null); setSelModule(null); } }] : []),
+    { label: "কোর্সসমূহ", onClick: () => { setSelCourse(null); setSelMilestone(null); setSelModule(null); } },
+    ...(selCourse ? [{ label: `কোর্স: ${selCourse.title}`, onClick: () => { setSelMilestone(null); setSelModule(null); } }] : []),
     ...(selMilestone ? [{ label: selMilestone.title, onClick: () => setSelModule(null) }] : []),
     ...(selModule ? [{ label: selModule.title, onClick: () => {} }] : []),
   ];
-
-  const statusColor = (s: string) =>
-    s === "active" ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-    : s === "upcoming" ? "bg-amber-500/20 text-amber-400 border-amber-500/30"
-    : "bg-slate-500/20 text-slate-400 border-slate-500/30";
-
-  const statusLabel = (s: string) =>
-    s === "active" ? "চলমান" : s === "upcoming" ? "আসছে" : "সমাপ্ত";
 
   return (
     <div className="min-h-screen bg-[#07182E] text-white flex">
@@ -385,8 +365,8 @@ export default function TeacherClassesPage() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
           <div className="space-y-1">
             <span className="text-xs font-bold text-[#FACC15] uppercase tracking-wider">ক্লাস ম্যানেজার</span>
-            <h1 className="text-2xl font-extrabold text-white">কোর্স · ব্যাচ · মাইলস্টোন · মডিউল · ক্লাস</h1>
-            <p className="text-xs text-slate-400">প্রথমে কোর্স নির্বাচন করুন, ব্যাচ তৈরি করুন, মাইলস্টোন ও মডিউল সাজিয়ে ইউটিউব ক্লাস ও পরীক্ষা প্রকাশ করুন।</p>
+            <h1 className="text-2xl font-extrabold text-white">কোর্স · মাইলস্টোন · মডিউল · ক্লাস</h1>
+            <p className="text-xs text-slate-400">প্রথমে কোর্স নির্বাচন করুন, মাইলস্টোন ও মডিউল সাজিয়ে ইউটিউব ক্লাস ও পরীক্ষা প্রকাশ করুন।</p>
           </div>
           <DashboardHeader role="teacher" />
         </div>
@@ -427,7 +407,6 @@ export default function TeacherClassesPage() {
               onChange={(e) => {
                 const found = courses.find((c) => c.id === e.target.value);
                 setSelCourse(found || null);
-                setSelBatch(null);
                 setSelMilestone(null);
                 setSelModule(null);
               }}
@@ -444,9 +423,8 @@ export default function TeacherClassesPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
-            { label: "মোট ব্যাচ", val: batches.length, color: "text-[#F59E0B]", icon: BookOpen },
             { label: "মাইলস্টোন", val: milestones.length, color: "text-violet-400", icon: Target },
             { label: "মডিউল", val: modules.length, color: "text-emerald-400", icon: Layers },
             { label: "ক্লাস / লেসন", val: classes.length, color: "text-sky-400", icon: PlayCircle },
@@ -464,7 +442,7 @@ export default function TeacherClassesPage() {
         {/* Breadcrumb */}
         {selCourse && (
           <div className="flex items-center gap-3 bg-[#0D2038] border border-white/10 rounded-2xl px-4 py-3">
-            <button onClick={() => { setSelBatch(null); setSelMilestone(null); setSelModule(null); }}
+            <button onClick={() => { setSelMilestone(null); setSelModule(null); }}
               className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300">
               <ArrowLeft className="w-4 h-4" />
             </button>
@@ -478,7 +456,7 @@ export default function TeacherClassesPage() {
             <div className="text-center max-w-xl mx-auto space-y-2">
               <h3 className="text-lg font-extrabold text-white">আপনার কোর্স নির্বাচন করুন</h3>
               <p className="text-xs text-slate-400">
-                ক্লাস ও ব্যাচ পরিচালনা শুরু করতে নিচে প্রদর্শিত আপনার অ্যাসাইন করা কোর্সগুলোর মধ্য থেকে একটি বেছে নিন।
+                ক্লাস ও পাঠ্যসূচি পরিচালনা শুরু করতে নিচে প্রদর্শিত আপনার অ্যাসাইন করা কোর্সগুলোর মধ্য থেকে একটি বেছে নিন।
               </p>
             </div>
 
@@ -493,7 +471,6 @@ export default function TeacherClassesPage() {
                     key={c.id}
                     onClick={() => {
                       setSelCourse(c);
-                      setSelBatch(null);
                       setSelMilestone(null);
                       setSelModule(null);
                     }}
@@ -510,7 +487,7 @@ export default function TeacherClassesPage() {
                     </h4>
                     <p className="text-xs text-slate-400 line-clamp-2">{c.tagline}</p>
                     <button className="w-full py-2.5 bg-[#F59E0B]/10 text-[#FACC15] group-hover:bg-[#F59E0B] group-hover:text-black font-bold text-xs rounded-xl transition-all">
-                      ব্যাচ ও পাঠ্যসূচি সাজান →
+                      পাঠ্যসূচি ও ক্লাস সাজান →
                     </button>
                   </div>
                 ))}
@@ -519,51 +496,13 @@ export default function TeacherClassesPage() {
           </div>
         )}
 
-        {/* ── LEVEL 1: BATCHES ─────────────────────────────────────────────────── */}
-        {selCourse && level === "batches" && (
+        {/* ── LEVEL 1: MILESTONES ───────────────────────────────────────────────── */}
+        {selCourse && level === "milestones" && (
           <section className="bg-[#0D2038] border border-white/10 rounded-3xl p-6">
-            <SectionHeader icon={BookOpen} title="ব্যাচসমূহ" color="text-[#F59E0B]"
-              count={batches.length} onAdd={openAddBatch} />
-            {batches.length === 0 && (
-              <p className="text-xs text-slate-500 text-center py-10 italic">কোনো ব্যাচ নেই — নতুন ব্যাচ তৈরি করুন</p>
-            )}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {batches.map((b) => (
-                <Card key={b.id} onClick={() => { setSelBatch(b); setMilestones(getMilestones(b.id)); }}>
-                  <div className="flex justify-between items-start mb-2">
-                    <BookOpen className="w-5 h-5 text-[#F59E0B]" />
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full border font-bold ${statusColor(b.status)}`}>
-                      {statusLabel(b.status)}
-                    </span>
-                  </div>
-                  <h4 className="font-bold text-white text-sm mb-1 line-clamp-2">{b.title}</h4>
-                  {b.description && <p className="text-[11px] text-slate-400 line-clamp-2 mb-3">{b.description}</p>}
-                  <p className="text-[10px] text-slate-500 mb-3">শুরু: {b.startDate || "—"}</p>
-                  <div className="flex justify-between items-center pt-2 border-t border-white/5">
-                    <span className="text-[10px] text-slate-400">{getMilestones(b.id).length} টি মাইলস্টোন</span>
-                    <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
-                      <ActionBtn onClick={() => openEditBatch(b)} color="bg-[#F59E0B]/10 hover:bg-[#F59E0B]/20 text-[#F59E0B]">
-                        <Edit className="w-3.5 h-3.5" />
-                      </ActionBtn>
-                      <ActionBtn onClick={() => { if (confirm(`"${b.title}" ডিলিট করবেন?`)) deleteBatch(b.id); }}
-                        color="bg-red-500/10 hover:bg-red-500/20 text-red-400">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </ActionBtn>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* ── LEVEL 2: MILESTONES ───────────────────────────────────────────────── */}
-        {level === "milestones" && (
-          <section className="bg-[#0D2038] border border-white/10 rounded-3xl p-6">
-            <SectionHeader icon={Target} title={`মাইলস্টোন — ${selBatch?.title}`} color="text-violet-400"
+            <SectionHeader icon={Target} title={`মাইলস্টোন — ${selCourse.title}`} color="text-violet-400"
               count={milestones.length} onAdd={openAddMilestone} />
             {milestones.length === 0 && (
-              <p className="text-xs text-slate-500 text-center py-10 italic">কোনো মাইলস্টোন নেই</p>
+              <p className="text-xs text-slate-500 text-center py-10 italic">কোনো মাইলস্টোন নেই — নতুন মাইলস্টোন যোগ করুন</p>
             )}
             <div className="space-y-3">
               {milestones.sort((a, b) => a.order - b.order).map((m) => (
@@ -663,7 +602,17 @@ export default function TeacherClassesPage() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex gap-1.5 shrink-0">
+                    <div className="flex gap-1.5 shrink-0 items-center">
+                      <button
+                        onClick={() => togglePublishClass(c.id, !(c.isPublished ?? true))}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-black border transition-all ${
+                          (c.isPublished ?? true)
+                            ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/30"
+                            : "bg-amber-500/20 text-amber-400 border-amber-500/30 hover:bg-amber-500/30"
+                        }`}
+                      >
+                        {(c.isPublished ?? true) ? "পাবলিশড" : "ড্রাফট"}
+                      </button>
                       <ActionBtn onClick={() => openEditClass(c)} color="bg-sky-500/10 hover:bg-sky-500/20 text-sky-400">
                         <Edit className="w-3.5 h-3.5" />
                       </ActionBtn>
@@ -689,46 +638,6 @@ export default function TeacherClassesPage() {
       </main>
 
       {/* ═══════════════ MODALS ════════════════════════════════════════════════ */}
-
-      {/* BATCH MODAL */}
-      {modal === "batch" && (
-        <Modal title={editingBatch.id ? "ব্যাচ সম্পাদনা" : "নতুন ব্যাচ তৈরি"} icon={BookOpen} onClose={() => setModal(null)}>
-          <div className="space-y-4">
-            <div>
-              <label className={label}>ব্যাচের নাম *</label>
-              <input type="text" placeholder="যেমন: BAFA ব্যাচ ২০২৬" value={editingBatch.title || ""}
-                onChange={(e) => setEditingBatch({ ...editingBatch, title: e.target.value })} className={inp} />
-            </div>
-            <div>
-              <label className={label}>বিবরণ</label>
-              <textarea rows={3} placeholder="ব্যাচের সংক্ষিপ্ত বিবরণ…" value={editingBatch.description || ""}
-                onChange={(e) => setEditingBatch({ ...editingBatch, description: e.target.value })} className={inp} />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={label}>শুরুর তারিখ</label>
-                <input type="date" value={editingBatch.startDate || ""}
-                  onChange={(e) => setEditingBatch({ ...editingBatch, startDate: e.target.value })} className={inp} />
-              </div>
-              <div>
-                <label className={label}>স্ট্যাটাস</label>
-                <select value={editingBatch.status || "upcoming"}
-                  onChange={(e) => setEditingBatch({ ...editingBatch, status: e.target.value as any })} className={inp}>
-                  <option value="upcoming">আসছে (Upcoming)</option>
-                  <option value="active">চলমান (Active)</option>
-                  <option value="ended">সমাপ্ত (Ended)</option>
-                </select>
-              </div>
-            </div>
-            <div className="flex gap-3 pt-2">
-              <button onClick={() => setModal(null)} className="w-1/2 py-3 bg-white/5 border border-white/10 rounded-xl text-xs font-bold text-white">বাতিল</button>
-              <button onClick={submitBatch} className="w-1/2 py-3 bg-[#F59E0B] rounded-xl text-xs font-bold text-black flex items-center justify-center gap-2">
-                <Save className="w-4 h-4" /> সেভ করুন
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
 
       {/* MILESTONE MODAL */}
       {modal === "milestone" && (

@@ -15,20 +15,48 @@ export interface ClassLesson {
   id: string;
   moduleId: string;
   milestoneId: string;
-  batchId: string;
+  batchId?: string;
+  courseId?: string;
   title: string;
   description: string;
   youtubeUrl: string; // unlisted YouTube URL or embed URL
+  youtubeVideoId?: string;
+  isPublished?: boolean;
   durationMin: number;
   order: number;
   tests: TestItem[];
   createdAt: string;
 }
 
+// ── YouTube Video ID Extractor & Embed URL Converter ─────────────────────────
+export function extractYouTubeVideoId(url: string): string {
+  if (!url) return "";
+  const trimmed = url.trim();
+  if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) return trimmed;
+
+  const embedMatch = trimmed.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/);
+  if (embedMatch) return embedMatch[1];
+
+  const shortMatch = trimmed.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+  if (shortMatch) return shortMatch[1];
+
+  const longMatch = trimmed.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+  if (longMatch) return longMatch[1];
+
+  return "";
+}
+
+export function toYouTubeEmbedUrl(urlOrId: string): string {
+  const videoId = extractYouTubeVideoId(urlOrId);
+  if (videoId) return `https://www.youtube.com/embed/${videoId}`;
+  return urlOrId || "";
+}
+
 export interface CourseModule {
   id: string;
   milestoneId: string;
-  batchId: string;
+  batchId?: string;
+  courseId?: string;
   title: string;
   description: string;
   order: number;
@@ -37,7 +65,8 @@ export interface CourseModule {
 
 export interface Milestone {
   id: string;
-  batchId: string;
+  batchId?: string;
+  courseId?: string;
   title: string;
   description: string;
   order: number;
@@ -86,7 +115,14 @@ function write<T>(key: string, data: T[]): void {
 }
 
 function uid(): string {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
 }
 
 // ── BATCHES ───────────────────────────────────────────────────────────────────
@@ -120,10 +156,54 @@ export function deleteBatch(id: string): void {
   write(KEYS.classes, getClasses().filter((c) => c.batchId !== id));
 }
 
+// ── DATABASE SYNC ─────────────────────────────────────────────────────────────
+export async function syncClassesFromDatabase(): Promise<{
+  milestones: Milestone[];
+  modules: CourseModule[];
+  classes: ClassLesson[];
+}> {
+  try {
+    const res = await fetch("/api/classes", { cache: "no-store" });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.milestones && data.milestones.length > 0) write(KEYS.milestones, data.milestones);
+      if (data.modules && data.modules.length > 0) write(KEYS.modules, data.modules);
+      if (data.classes && data.classes.length > 0) write(KEYS.classes, data.classes);
+      return data;
+    }
+  } catch {
+    // Ignore fetch errors
+  }
+  return {
+    milestones: getMilestones(),
+    modules: getModules(),
+    classes: getClasses(),
+  };
+}
+
+async function postApi(action: string, payload: any) {
+  try {
+    await fetch("/api/classes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, payload }),
+    });
+  } catch {
+    // Ignore offline errors
+  }
+}
+
 // ── MILESTONES ────────────────────────────────────────────────────────────────
-export function getMilestones(batchId?: string): Milestone[] {
+export function getMilestones(targetId?: string): Milestone[] {
   const all = read<Milestone>(KEYS.milestones);
-  return batchId ? all.filter((m) => m.batchId === batchId) : all;
+  if (!targetId) return all;
+  const norm = (s?: string) => (s || "").toLowerCase().replace(/[-_\s]+/g, "");
+  return all.filter(
+    (m) =>
+      !m.courseId ||
+      norm(m.courseId) === norm(targetId) ||
+      m.batchId === targetId
+  );
 }
 
 export function saveMilestone(
@@ -131,16 +211,20 @@ export function saveMilestone(
 ): Milestone {
   const list = getMilestones();
   const now = new Date().toISOString();
+  let item: Milestone;
   if (data.id) {
     const idx = list.findIndex((m) => m.id === data.id);
     if (idx >= 0) {
       list[idx] = { ...list[idx], ...data } as Milestone;
+      item = list[idx];
       write(KEYS.milestones, list);
-      return list[idx];
+      postApi("save_milestone", item);
+      return item;
     }
   }
-  const item: Milestone = { id: uid(), createdAt: now, ...data } as Milestone;
+  item = { id: uid(), createdAt: now, ...data } as Milestone;
   write(KEYS.milestones, [...list, item]);
+  postApi("save_milestone", item);
   return item;
 }
 
@@ -148,6 +232,7 @@ export function deleteMilestone(id: string): void {
   write(KEYS.milestones, getMilestones().filter((m) => m.id !== id));
   write(KEYS.modules, getModules().filter((m) => m.milestoneId !== id));
   write(KEYS.classes, getClasses().filter((c) => c.milestoneId !== id));
+  postApi("delete_milestone", { id });
 }
 
 // ── MODULES ───────────────────────────────────────────────────────────────────
@@ -161,22 +246,27 @@ export function saveModule(
 ): CourseModule {
   const list = getModules();
   const now = new Date().toISOString();
+  let item: CourseModule;
   if (data.id) {
     const idx = list.findIndex((m) => m.id === data.id);
     if (idx >= 0) {
       list[idx] = { ...list[idx], ...data } as CourseModule;
+      item = list[idx];
       write(KEYS.modules, list);
-      return list[idx];
+      postApi("save_module", item);
+      return item;
     }
   }
-  const item: CourseModule = { id: uid(), createdAt: now, ...data } as CourseModule;
+  item = { id: uid(), createdAt: now, ...data } as CourseModule;
   write(KEYS.modules, [...list, item]);
+  postApi("save_module", item);
   return item;
 }
 
 export function deleteModule(id: string): void {
   write(KEYS.modules, getModules().filter((m) => m.id !== id));
   write(KEYS.classes, getClasses().filter((c) => c.moduleId !== id));
+  postApi("delete_module", { id });
 }
 
 // ── CLASSES ───────────────────────────────────────────────────────────────────
@@ -190,40 +280,89 @@ export function saveClass(
 ): ClassLesson {
   const list = getClasses();
   const now = new Date().toISOString();
+  const videoId = extractYouTubeVideoId(data.youtubeUrl || "");
+  const payloadData = {
+    ...data,
+    youtubeVideoId: videoId || data.youtubeVideoId || "",
+    isPublished: data.isPublished ?? true,
+  };
+  let item: ClassLesson;
   if (data.id) {
     const idx = list.findIndex((c) => c.id === data.id);
     if (idx >= 0) {
-      list[idx] = { ...list[idx], ...data } as ClassLesson;
+      list[idx] = { ...list[idx], ...payloadData } as ClassLesson;
+      item = list[idx];
       write(KEYS.classes, list);
-      return list[idx];
+      postApi("save_class", item);
+      return item;
     }
   }
-  const item: ClassLesson = { id: uid(), createdAt: now, ...data } as ClassLesson;
+  item = { id: uid(), createdAt: now, ...payloadData } as ClassLesson;
   write(KEYS.classes, [...list, item]);
+  postApi("save_class", item);
   return item;
 }
 
 export function deleteClass(id: string): void {
   write(KEYS.classes, getClasses().filter((c) => c.id !== id));
+  postApi("delete_class", { id });
 }
 
-// ── YouTube URL → embed URL converter ─────────────────────────────────────────
-export function toYouTubeEmbedUrl(url: string): string {
-  if (!url) return "";
-  // Already embed format
-  if (url.includes("youtube.com/embed/")) return url;
-  // youtu.be/VIDEO_ID
-  const shortMatch = url.match(/youtu\.be\/([^?&]+)/);
-  if (shortMatch) return `https://www.youtube.com/embed/${shortMatch[1]}`;
-  // youtube.com/watch?v=VIDEO_ID
-  const longMatch = url.match(/[?&]v=([^&]+)/);
-  if (longMatch) return `https://www.youtube.com/embed/${longMatch[1]}`;
-  return url;
+export function togglePublishClass(id: string, isPublished: boolean): void {
+  const list = getClasses();
+  const idx = list.findIndex((c) => c.id === id);
+  if (idx >= 0) {
+    list[idx].isPublished = isPublished;
+    write(KEYS.classes, list);
+    postApi("toggle_publish_class", { id, isPublished });
+  }
+}
+
+// ── LESSON PROGRESS ───────────────────────────────────────────────────────────
+const PROGRESS_KEY = "durbar_lesson_progress_v1";
+
+export function getCompletedLessonIds(studentId?: string): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(PROGRESS_KEY);
+    const list: any[] = raw ? JSON.parse(raw) : [];
+    if (!studentId) return list.map((p) => p.lessonId);
+    return list.filter((p) => p.studentId === studentId).map((p) => p.lessonId);
+  } catch {
+    return [];
+  }
+}
+
+export async function recordLessonProgress(
+  studentId: string,
+  lessonId: string,
+  courseId?: string
+): Promise<string[]> {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(PROGRESS_KEY);
+    const list: any[] = raw ? JSON.parse(raw) : [];
+    const exists = list.some((p) => p.studentId === studentId && p.lessonId === lessonId);
+    if (!exists) {
+      list.push({ studentId, lessonId, courseId, completedAt: new Date().toISOString() });
+      localStorage.setItem(PROGRESS_KEY, JSON.stringify(list));
+      window.dispatchEvent(new Event(EVENT));
+    }
+  } catch {}
+
+  postApi("record_progress", { studentId, lessonId, courseId });
+  return getCompletedLessonIds(studentId);
 }
 
 // ── Subscribe ─────────────────────────────────────────────────────────────────
 export function subscribeClassStore(cb: () => void): () => void {
   if (typeof window === "undefined") return () => {};
   window.addEventListener(EVENT, cb);
-  return () => window.removeEventListener(EVENT, cb);
+  window.addEventListener("storage", cb);
+  window.addEventListener("focus", cb);
+  return () => {
+    window.removeEventListener(EVENT, cb);
+    window.removeEventListener("storage", cb);
+    window.removeEventListener("focus", cb);
+  };
 }

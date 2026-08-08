@@ -43,7 +43,6 @@ export async function fetchCoursesFromDatabase(): Promise<Course[]> {
     const { data, error } = await supabase.from("courses").select("*").order("created_at", { ascending: false });
 
     if (error) {
-      console.error("Supabase fetch courses error:", error);
       return getStoredCourses();
     }
 

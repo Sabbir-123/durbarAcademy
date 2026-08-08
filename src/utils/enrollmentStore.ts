@@ -48,6 +48,8 @@ export async function fetchEnrollmentsFromDatabase(): Promise<EnrollmentRecord[]
   return DEFAULT_RECORDS;
 }
 
+export const syncEnrollmentsFromSupabase = fetchEnrollmentsFromDatabase;
+
 export async function submitEnrollmentRequest(
   record: Omit<EnrollmentRecord, "id" | "status" | "created_at" | "updated_at">
 ): Promise<EnrollmentRecord> {
