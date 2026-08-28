@@ -86,24 +86,17 @@ export default function EcosystemMethodology() {
             const Icon = step.icon;
             const isActive = activeStep === step.id;
 
-            const initialPos =
-              step.direction === "left"
-                ? { opacity: 0, x: -60 }
-                : step.direction === "right"
-                ? { opacity: 0, x: 60 }
-                : { opacity: 0, y: -40 };
-
             return (
               <motion.button
                 key={step.id}
-                initial={initialPos}
-                whileInView={{ opacity: 1, x: 0, y: 0 }}
-                viewport={{ once: false, amount: 0.2 }}
-                transition={{ duration: 0.6, delay: step.id * 0.15 }}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
+                initial={{ opacity: 0, y: 25 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: false, amount: 0.15 }}
+                transition={{ duration: 0.5, delay: step.id * 0.1 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => setActiveStep(step.id)}
-                className={`p-6 rounded-3xl text-left transition-all duration-300 relative border overflow-hidden ${
+                className={`p-6 rounded-3xl text-left transition-all duration-300 relative border overflow-hidden transform-gpu ${
                   isActive
                     ? "bg-[#142C4B] border-[#F59E0B] shadow-2xl gold-glow active-step-card"
                     : "bg-[#0D2038] border-white/10 hover:border-white/20 hover:bg-[#102744]"

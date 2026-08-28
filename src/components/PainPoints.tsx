@@ -61,11 +61,11 @@ export default function PainPoints() {
               >
                 {/* Problem Side (Alternating Left/Right) */}
                 <motion.div
-                  initial={{ opacity: 0, x: isEven ? -60 : 60 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: false, amount: 0.2 }}
-                  transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-                  className="bg-[#121B2A]/90 p-6 sm:p-8 border-b lg:border-b-0 lg:border-r border-red-500/15 flex gap-4"
+                  initial={{ opacity: 0, y: 25 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: false, amount: 0.15 }}
+                  transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                  className="bg-[#121B2A]/90 p-6 sm:p-8 border-b lg:border-b-0 lg:border-r border-red-500/15 flex gap-4 transform-gpu"
                 >
                   <div className="w-10 h-10 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center shrink-0">
                     <XCircle className="w-5 h-5 text-red-400" />
@@ -83,11 +83,11 @@ export default function PainPoints() {
 
                 {/* Solution Side (Opposite direction) */}
                 <motion.div
-                  initial={{ opacity: 0, x: isEven ? 60 : -60 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: false, amount: 0.2 }}
-                  transition={{ duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-                  className="bg-gradient-to-br from-[#0E2847] to-[#0A223E] p-6 sm:p-8 flex gap-4 border-l-0 lg:border-l border-emerald-500/20"
+                  initial={{ opacity: 0, y: 25 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: false, amount: 0.15 }}
+                  transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+                  className="bg-gradient-to-br from-[#0E2847] to-[#0A223E] p-6 sm:p-8 flex gap-4 border-l-0 lg:border-l border-emerald-500/20 transform-gpu"
                 >
                   <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center shrink-0">
                     <CheckCircle2 className="w-5 h-5 text-emerald-400" />

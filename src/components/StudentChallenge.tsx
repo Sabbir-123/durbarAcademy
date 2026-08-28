@@ -72,26 +72,19 @@ export default function StudentChallenge() {
           {challenges.map((item, idx) => {
             const Icon = item.icon;
 
-            const initialPos =
-              item.direction === "left"
-                ? { opacity: 0, x: -60 }
-                : item.direction === "right"
-                ? { opacity: 0, x: 60 }
-                : { opacity: 0, y: 60 };
-
             return (
               <motion.div
                 key={item.id}
-                initial={initialPos}
-                whileInView={{ opacity: 1, x: 0, y: 0 }}
-                viewport={{ once: false, amount: 0.2 }}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: false, amount: 0.15 }}
                 transition={{
-                  duration: 0.7,
-                  delay: idx * 0.15,
+                  duration: 0.5,
+                  delay: idx * 0.1,
                   ease: [0.22, 1, 0.36, 1],
                 }}
-                whileHover={{ y: -8, scale: 1.02 }}
-                className="bg-[#0D2038] hover:bg-[#122744] border border-white/10 hover:border-red-500/40 rounded-3xl p-5 sm:p-6 transition-all duration-300 shadow-xl group flex flex-col justify-between"
+                whileHover={{ y: -6, scale: 1.01 }}
+                className="bg-[#0D2038] hover:bg-[#122744] border border-white/10 hover:border-red-500/40 rounded-3xl p-5 sm:p-6 transition-all duration-300 shadow-xl group flex flex-col justify-between transform-gpu"
               >
                 <div className="space-y-5">
                   {/* Large 16:10 Image Container */}

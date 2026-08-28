@@ -78,25 +78,18 @@ export default function LearningProcess() {
               const Icon = step.icon;
               const isLast = idx === steps.length - 1;
 
-              const initialPos =
-                step.direction === "left"
-                  ? { opacity: 0, x: -60 }
-                  : step.direction === "right"
-                  ? { opacity: 0, x: 60 }
-                  : { opacity: 0, y: 60 };
-
               return (
                 <motion.div
                   key={step.number}
-                  initial={initialPos}
-                  whileInView={{ opacity: 1, x: 0, y: 0 }}
-                  viewport={{ once: false, amount: 0.2 }}
+                  initial={{ opacity: 0, y: 25 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: false, amount: 0.15 }}
                   transition={{
-                    duration: 0.7,
-                    delay: idx * 0.15,
+                    duration: 0.5,
+                    delay: idx * 0.1,
                     ease: [0.22, 1, 0.36, 1],
                   }}
-                  className={`flex flex-col justify-between space-y-6 ${
+                  className={`flex flex-col justify-between space-y-6 transform-gpu ${
                     !isLast
                       ? "border-b lg:border-b-0 lg:border-r border-white/10 pb-8 lg:pb-0 lg:pr-10"
                       : "lg:pl-10"

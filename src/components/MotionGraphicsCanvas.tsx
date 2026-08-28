@@ -35,7 +35,7 @@ export default function MotionGraphicsCanvas() {
       });
     }
 
-    // 2. Kinetic Floating Particles Engine
+    // 2. Kinetic Floating Particles Engine (Optimized for Mobile)
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -44,6 +44,7 @@ export default function MotionGraphicsCanvas() {
     let animationFrameId: number;
     let width = (canvas.width = window.innerWidth);
     let height = (canvas.height = window.innerHeight);
+    const isMobile = width < 768;
 
     const handleResize = () => {
       if (!canvas) return;
@@ -66,14 +67,15 @@ export default function MotionGraphicsCanvas() {
     }
 
     const colors = ["#F59E0B", "#8B5CF6", "#3B82F6", "#10B981"];
-    const particles: Particle[] = Array.from({ length: 35 }, () => ({
+    const particleCount = isMobile ? 12 : 35;
+    const particles: Particle[] = Array.from({ length: particleCount }, () => ({
       x: Math.random() * width,
       y: Math.random() * height,
-      vx: (Math.random() - 0.5) * 0.4,
-      vy: (Math.random() - 0.5) * 0.4,
-      radius: Math.random() * 2.5 + 1,
+      vx: (Math.random() - 0.5) * (isMobile ? 0.25 : 0.4),
+      vy: (Math.random() - 0.5) * (isMobile ? 0.25 : 0.4),
+      radius: Math.random() * (isMobile ? 1.8 : 2.5) + 1,
       alpha: Math.random() * 0.5 + 0.1,
-      maxAlpha: Math.random() * 0.6 + 0.2,
+      maxAlpha: Math.random() * 0.5 + 0.2,
       color: colors[Math.floor(Math.random() * colors.length)],
       phase: Math.random() * Math.PI * 2,
     }));
@@ -96,10 +98,16 @@ export default function MotionGraphicsCanvas() {
         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
         ctx.fillStyle = p.color;
         ctx.globalAlpha = p.alpha;
-        ctx.shadowBlur = 12;
-        ctx.shadowColor = p.color;
+        
+        // Skip expensive shadowBlur on mobile devices for 60fps scrolling
+        if (!isMobile) {
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = p.color;
+        }
         ctx.fill();
-        ctx.shadowBlur = 0;
+        if (!isMobile) {
+          ctx.shadowBlur = 0;
+        }
       });
 
       animationFrameId = requestAnimationFrame(render);
@@ -118,7 +126,7 @@ export default function MotionGraphicsCanvas() {
       {/* Morphing Kinetic SVG Shapes */}
       <svg
         ref={svgRef}
-        className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] sm:w-[800px] sm:h-[800px] opacity-25 filter blur-3xl"
+        className="absolute top-[-10%] right-[-10%] w-[320px] h-[320px] sm:w-[800px] sm:h-[800px] opacity-20 sm:opacity-25 filter blur-2xl sm:blur-3xl transform-gpu"
         viewBox="0 0 400 400"
       >
         <defs>
@@ -144,7 +152,7 @@ export default function MotionGraphicsCanvas() {
       </svg>
 
       {/* Particle Canvas Kinetic System */}
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full transform-gpu" />
     </div>
   );
 }

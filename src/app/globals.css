@@ -24,12 +24,17 @@
     --text-muted: #64748B;
   }
 
+  html, body, main {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
   body {
     background-color: #07182E;
     color: #FFFFFF;
     font-family: var(--font-bengali), var(--font-english), sans-serif;
-    overflow-x: hidden;
     scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
   }
 }
 

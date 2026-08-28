@@ -50,10 +50,10 @@ export default function Hero({ onOpenRegisterModal }: HeroProps) {
 
           {/* Main Headline (From Left) */}
           <motion.h1
-            initial={{ opacity: 0, x: -60 }}
-            whileInView={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, y: 25 }}
+            whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: false, amount: 0.2 }}
-            transition={{ duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
             className="text-4xl sm:text-6xl lg:text-7xl font-black text-white tracking-tight leading-[1.2] sm:leading-[1.12]"
           >
             আজকের প্রস্তুতি।
@@ -64,10 +64,10 @@ export default function Hero({ onOpenRegisterModal }: HeroProps) {
 
           {/* Supporting Text (From Bottom) */}
           <motion.p
-            initial={{ opacity: 0, y: 40 }}
+            initial={{ opacity: 0, y: 25 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: false, amount: 0.2 }}
-            transition={{ duration: 0.6, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.5, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
             className="text-base sm:text-xl text-slate-200 font-normal leading-relaxed max-w-2xl"
           >
             শুধু পরীক্ষার প্রস্তুতি নয়, আত্মবিশ্বাস, শৃঙ্খলা ও সঠিক দিকনির্দেশনায় নিজেকে গড়ে তুলুন{" "}
@@ -76,10 +76,10 @@ export default function Hero({ onOpenRegisterModal }: HeroProps) {
 
           {/* Action CTAs (From Right) */}
           <motion.div
-            initial={{ opacity: 0, x: 60 }}
-            whileInView={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, y: 25 }}
+            whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: false, amount: 0.2 }}
-            transition={{ duration: 0.6, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.5, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
             className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-4"
           >
             <motion.button

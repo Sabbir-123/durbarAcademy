@@ -65,11 +65,11 @@ export default function DurbarSolution() {
             
             {/* Dark Navy Content Panel Over LEFT Side on Desktop (From Left) */}
             <motion.div
-              initial={{ opacity: 0, x: -60 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: false, amount: 0.2 }}
-              transition={{ duration: 0.7, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-              className="w-full lg:max-w-2xl bg-[#081B33]/95 backdrop-blur-md rounded-2xl lg:rounded-3xl p-6 sm:p-10 border border-white/10 shadow-2xl space-y-8 durbar-solution-panel"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: false, amount: 0.15 }}
+              transition={{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+              className="w-full lg:max-w-2xl bg-[#081B33]/95 backdrop-blur-md rounded-2xl lg:rounded-3xl p-6 sm:p-10 border border-white/10 shadow-2xl space-y-8 durbar-solution-panel transform-gpu"
             >
               {/* Top Eyebrow */}
               <div className="space-y-3">

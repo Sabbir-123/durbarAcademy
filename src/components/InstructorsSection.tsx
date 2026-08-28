@@ -32,26 +32,19 @@ export default function InstructorsSection() {
         {/* Mentor Cards Grid with Directional Entrances */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {INSTRUCTORS.map((mentor, idx) => {
-            const initialPos =
-              idx === 0
-                ? { opacity: 0, x: -50 }
-                : idx === INSTRUCTORS.length - 1
-                ? { opacity: 0, x: 50 }
-                : { opacity: 0, y: 50 };
-
             return (
               <motion.div
                 key={mentor.id}
-                initial={initialPos}
-                whileInView={{ opacity: 1, x: 0, y: 0 }}
-                viewport={{ once: false, amount: 0.15 }}
+                initial={{ opacity: 0, y: 25 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: false, amount: 0.1 }}
                 transition={{
-                  duration: 0.6,
-                  delay: idx * 0.12,
+                  duration: 0.5,
+                  delay: idx * 0.1,
                   ease: [0.22, 1, 0.36, 1],
                 }}
-                whileHover={{ y: -8, scale: 1.02 }}
-                className="bg-[#0D2038] hover:bg-[#122744] border border-white/10 hover:border-[#F59E0B]/30 rounded-3xl p-6 transition-all duration-300 flex flex-col justify-between shadow-xl group"
+                whileHover={{ y: -6, scale: 1.01 }}
+                className="bg-[#0D2038] hover:bg-[#122744] border border-white/10 hover:border-[#F59E0B]/30 rounded-3xl p-6 transition-all duration-300 flex flex-col justify-between shadow-xl group transform-gpu"
               >
                 <div className="space-y-4">
                   {/* Top Badge */}

@@ -16,9 +16,9 @@ export default function ScrollReveal({
   children,
   direction = "bottom",
   delay = 0,
-  duration = 0.6,
+  duration = 0.5,
   className = "",
-  distance = 60,
+  distance = 35,
 }: ScrollRevealProps) {
   const getInitial = () => {
     switch (direction) {
@@ -27,11 +27,11 @@ export default function ScrollReveal({
       case "bottom":
         return { opacity: 0, y: distance };
       case "left":
-        return { opacity: 0, x: -distance };
+        return { opacity: 0, y: 25 };
       case "right":
-        return { opacity: 0, x: distance };
+        return { opacity: 0, y: 25 };
       case "zoom":
-        return { opacity: 0, scale: 0.85, y: 20 };
+        return { opacity: 0, scale: 0.92, y: 15 };
       default:
         return { opacity: 0, y: distance };
     }
@@ -46,13 +46,13 @@ export default function ScrollReveal({
         x: 0,
         scale: 1,
       }}
-      viewport={{ once: false, amount: 0.15 }}
+      viewport={{ once: false, amount: 0.1 }}
       transition={{
         duration,
         delay,
-        ease: [0.22, 1, 0.36, 1], // Smooth natural spring curve
+        ease: [0.25, 0.1, 0.25, 1.0], // Hardware accelerated cubic bezier curve
       }}
-      className={className}
+      className={`${className} transform-gpu will-change-transform`}
     >
       {children}
     </motion.div>
