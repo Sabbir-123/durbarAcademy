@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { GraduationCap, PhoneCall, Mail, MapPin, Moon, Sparkles } from "lucide-react";
+import { GraduationCap, PhoneCall, Mail, Globe, MessageSquare, Moon, Sparkles } from "lucide-react";
 import { SITE_CONFIG } from "@/config/siteConfig";
 
 interface FooterProps {
@@ -29,13 +29,13 @@ export default function Footer({ onOpenRegisterModal }: FooterProps) {
         {/* TOP FOOTER: 3 Major Columns */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 lg:gap-16">
           
-          {/* LEFT COLUMN (From Left) */}
+          {/* LEFT COLUMN */}
           <motion.div
-            initial={{ opacity: 0, x: -60 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: false, amount: 0.2 }}
-            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            className="space-y-4"
+            initial={{ opacity: 0, y: 25 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: false, amount: 0.15 }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            className="space-y-4 transform-gpu"
           >
             {/* Official Logo */}
             <Link href="/" className="flex items-center gap-3 group">
@@ -67,13 +67,13 @@ export default function Footer({ onOpenRegisterModal }: FooterProps) {
             </p>
           </motion.div>
 
-          {/* MIDDLE COLUMN: Explore Links (From Bottom) */}
+          {/* MIDDLE COLUMN: Explore Links */}
           <motion.div
-            initial={{ opacity: 0, y: 40 }}
+            initial={{ opacity: 0, y: 25 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: false, amount: 0.2 }}
-            transition={{ duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-            className="space-y-4"
+            viewport={{ once: false, amount: 0.15 }}
+            transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+            className="space-y-4 transform-gpu"
           >
             <h4 className="text-sm font-bold text-[#F59E0B] uppercase tracking-wider">
               Explore
@@ -110,36 +110,44 @@ export default function Footer({ onOpenRegisterModal }: FooterProps) {
             </ul>
           </motion.div>
 
-          {/* RIGHT COLUMN: Contact Info (From Right) */}
+          {/* RIGHT COLUMN: Contact Info */}
           <motion.div
-            initial={{ opacity: 0, x: 60 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: false, amount: 0.2 }}
-            transition={{ duration: 0.7, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            className="space-y-4"
+            initial={{ opacity: 0, y: 25 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: false, amount: 0.15 }}
+            transition={{ duration: 0.5, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            className="space-y-4 transform-gpu"
           >
             <h4 className="text-sm font-bold text-white uppercase tracking-wider">
               যোগাযোগ
             </h4>
 
-            <div className="space-y-3 text-xs sm:text-sm text-slate-300 bg-[#07182E] p-5 rounded-2xl border border-white/10">
-              <div className="font-bold text-white text-base">
-                {SITE_CONFIG.name}
+            <div className="space-y-3 text-xs sm:text-sm text-slate-300 bg-[#07182E] p-5 rounded-2xl border border-white/10 shadow-lg">
+              <div className="font-bold text-white text-base flex items-center gap-2">
+                <span>{SITE_CONFIG.name}</span>
+                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  ১০০% অনলাইন
+                </span>
               </div>
 
               <div className="flex items-start gap-2.5 pt-1">
-                <MapPin className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                <span className="leading-relaxed">{SITE_CONFIG.contact.address}</span>
+                <Globe className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <span className="leading-relaxed font-medium text-emerald-300">{SITE_CONFIG.contact.platformStatus}</span>
               </div>
 
               <div className="flex items-center gap-2.5">
                 <PhoneCall className="w-4 h-4 text-[#F59E0B] shrink-0" />
-                <span>{SITE_CONFIG.contact.phone}</span>
+                <span>হটলাইন: <a href={`tel:${SITE_CONFIG.contact.phone}`} className="text-white hover:text-[#F59E0B] font-bold">{SITE_CONFIG.contact.phone}</a></span>
+              </div>
+
+              <div className="flex items-center gap-2.5">
+                <MessageSquare className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>হোয়াটসঅ্যাপ: <a href={`https://wa.me/88${SITE_CONFIG.contact.whatsapp}`} target="_blank" rel="noopener noreferrer" className="text-white hover:text-emerald-400 font-bold">{SITE_CONFIG.contact.whatsapp}</a></span>
               </div>
 
               <div className="flex items-center gap-2.5">
                 <Mail className="w-4 h-4 text-[#F59E0B] shrink-0" />
-                <span>{SITE_CONFIG.contact.email}</span>
+                <span>ইমেইল: <a href={`mailto:${SITE_CONFIG.contact.email}`} className="text-white hover:text-[#F59E0B] font-bold">{SITE_CONFIG.contact.email}</a></span>
               </div>
             </div>
           </motion.div>
